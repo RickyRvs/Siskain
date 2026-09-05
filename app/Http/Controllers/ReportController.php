@@ -9,6 +9,7 @@ use App\Models\TransactionItem;
 use App\Exports\KeuanganExport;
 use App\Exports\StokExport;
 use App\Exports\PiutangExport;
+use App\Services\TenantContext;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -200,12 +201,19 @@ class ReportController extends Controller
             ->get()
             ->keyBy('tanggal');
 
+        // FIX: query ini pakai DB::table() langsung (raw query builder), jadi gak
+        // pernah kena global scope tenant dari model Transaction/TransactionItem.
+        // Tanpa filter manual, modal harian ini ke-hitung dari SEMUA tenant.
+        $tenantContext = app(TenantContext::class);
+        $isGlobal = !$tenantContext->check(); // superadmin tanpa impersonate = lihat semua
+
         $dailyModal = DB::table('transaction_items')
             ->join('transactions', 'transactions.id', '=', 'transaction_items.transaction_id')
             ->leftJoin('products', 'products.id', '=', 'transaction_items.product_id')
             ->leftJoin('product_variants', 'product_variants.id', '=', 'transaction_items.product_variant_id')
             ->whereBetween('transactions.created_at', [$start, $end])
             ->where('transactions.status', 'lunas')
+            ->when(!$isGlobal, fn ($q) => $q->where('transactions.tenant_id', $tenantContext->id()))
             ->selectRaw('DATE(transactions.created_at) as tanggal, SUM(transaction_items.qty * COALESCE(product_variants.price_modal, products.price_modal, 0)) as modal')
             ->groupBy('tanggal')
             ->get()

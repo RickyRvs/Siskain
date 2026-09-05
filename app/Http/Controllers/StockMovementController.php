@@ -7,6 +7,7 @@ use App\Models\IngredientStockMovement;
 use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Models\StockMovement;
+use App\Services\TenantContext;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -14,13 +15,22 @@ class StockMovementController extends Controller
 {
     public function index(Request $request)
     {
+        $tenantContext = app(TenantContext::class);
+        $isGlobal = !$tenantContext->check(); // superadmin tanpa impersonate = lihat semua
+        $tenantId = $tenantContext->id();
+
         // Union dua sumber histori stok (produk & bahan baku) jadi satu timeline,
         // biar "Riwayat Stok" gak cuma nunjukin produk padahal bahan baku juga
         // punya kartu stok sendiri (ingredient_stock_movements).
+        //
+        // FIX: kedua query ini pakai DB::table() langsung, jadi gak kena global
+        // scope tenant dari model StockMovement/IngredientStockMovement.
+        // Difilter manual di sini.
         $productMovements = DB::table('stock_movements as sm')
             ->join('products as p', 'p.id', '=', 'sm.product_id')
             ->leftJoin('product_variants as pv', 'pv.id', '=', 'sm.product_variant_id')
             ->join('users as u', 'u.id', '=', 'sm.user_id')
+            ->when(!$isGlobal, fn ($q) => $q->where('sm.tenant_id', $tenantId))
             ->select([
                 'sm.id',
                 DB::raw("'product' as source_type"),
@@ -38,6 +48,7 @@ class StockMovementController extends Controller
         $ingredientMovements = DB::table('ingredient_stock_movements as ism')
             ->join('ingredients as i', 'i.id', '=', 'ism.ingredient_id')
             ->join('users as u', 'u.id', '=', 'ism.user_id')
+            ->when(!$isGlobal, fn ($q) => $q->where('ism.tenant_id', $tenantId))
             ->select([
                 'ism.id',
                 DB::raw("'ingredient' as source_type"),

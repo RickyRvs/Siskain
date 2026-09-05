@@ -6,8 +6,10 @@ use App\Models\Category;
 use App\Models\Ingredient;
 use App\Models\Product;
 use App\Models\StockMovement;
+use App\Services\TenantContext;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 
 class ProductController extends Controller
 {
@@ -49,10 +51,18 @@ class ProductController extends Controller
 
     public function store(Request $request)
     {
+        $tenantId = app(TenantContext::class)->id();
+
         $validated = $request->validate([
             'category_id' => 'required|exists:categories,id',
             'name' => 'required|string|max:255',
-            'sku' => 'nullable|string|unique:products,sku',
+            // SKU cuma perlu unik dalam satu tenant, bukan lintas semua usaha
+            'sku' => [
+                'nullable',
+                'string',
+                Rule::unique('products', 'sku')
+                    ->where(fn ($q) => $q->where('tenant_id', $tenantId)),
+            ],
             'photo' => 'nullable|image|max:2048',
             'price_modal' => 'required|numeric|min:0',
             'price_jual' => 'required|numeric|min:0',
@@ -115,10 +125,18 @@ class ProductController extends Controller
 
     public function update(Request $request, Product $product)
     {
+        $tenantId = app(TenantContext::class)->id();
+
         $validated = $request->validate([
             'category_id' => 'required|exists:categories,id',
             'name' => 'required|string|max:255',
-            'sku' => 'nullable|string|unique:products,sku,' . $product->id,
+            'sku' => [
+                'nullable',
+                'string',
+                Rule::unique('products', 'sku')
+                    ->where(fn ($q) => $q->where('tenant_id', $tenantId))
+                    ->ignore($product->id),
+            ],
             'photo' => 'nullable|image|max:2048',
             'price_modal' => 'required|numeric|min:0',
             'price_jual' => 'required|numeric|min:0',
