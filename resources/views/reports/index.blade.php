@@ -11,29 +11,31 @@
                     </p>
                 </div>
 
-                <div class="flex flex-wrap items-center gap-2">
-                    <a href="{{ route('reports.index', ['period' => 'today']) }}"
-                       class="px-4 py-2 text-sm font-medium rounded-lg ring-1 {{ $period === 'today' ? 'bg-[#0F2E2B] text-white ring-[#0F2E2B]' : 'bg-white text-[#1F2A24] ring-[#E7E1D3] hover:ring-[#D4A73C]/60' }}">
-                        Hari Ini
-                    </a>
-                    <a href="{{ route('reports.index', ['period' => 'week']) }}"
-                       class="px-4 py-2 text-sm font-medium rounded-lg ring-1 {{ $period === 'week' ? 'bg-[#0F2E2B] text-white ring-[#0F2E2B]' : 'bg-white text-[#1F2A24] ring-[#E7E1D3] hover:ring-[#D4A73C]/60' }}">
-                        Minggu Ini
-                    </a>
-                    <a href="{{ route('reports.index', ['period' => 'month']) }}"
-                       class="px-4 py-2 text-sm font-medium rounded-lg ring-1 {{ $period === 'month' ? 'bg-[#0F2E2B] text-white ring-[#0F2E2B]' : 'bg-white text-[#1F2A24] ring-[#E7E1D3] hover:ring-[#D4A73C]/60' }}">
-                        Bulan Ini
-                    </a>
+                <div class="flex flex-col sm:flex-row sm:flex-wrap items-stretch sm:items-center gap-2">
+                    <div class="flex gap-2 overflow-x-auto -mx-1 px-1 sm:mx-0 sm:px-0 sm:overflow-visible">
+                        <a href="{{ route('reports.index', ['period' => 'today']) }}"
+                           class="shrink-0 px-4 py-2 text-sm font-medium rounded-lg ring-1 {{ $period === 'today' ? 'bg-[#0F2E2B] text-white ring-[#0F2E2B]' : 'bg-white text-[#1F2A24] ring-[#E7E1D3] hover:ring-[#D4A73C]/60' }}">
+                            Hari Ini
+                        </a>
+                        <a href="{{ route('reports.index', ['period' => 'week']) }}"
+                           class="shrink-0 px-4 py-2 text-sm font-medium rounded-lg ring-1 {{ $period === 'week' ? 'bg-[#0F2E2B] text-white ring-[#0F2E2B]' : 'bg-white text-[#1F2A24] ring-[#E7E1D3] hover:ring-[#D4A73C]/60' }}">
+                            Minggu Ini
+                        </a>
+                        <a href="{{ route('reports.index', ['period' => 'month']) }}"
+                           class="shrink-0 px-4 py-2 text-sm font-medium rounded-lg ring-1 {{ $period === 'month' ? 'bg-[#0F2E2B] text-white ring-[#0F2E2B]' : 'bg-white text-[#1F2A24] ring-[#E7E1D3] hover:ring-[#D4A73C]/60' }}">
+                            Bulan Ini
+                        </a>
+                    </div>
 
-                    <form action="{{ route('reports.index') }}" method="GET" class="flex items-center gap-2">
+                    <form action="{{ route('reports.index') }}" method="GET" class="flex flex-wrap items-center gap-2">
                         <input type="hidden" name="period" value="custom">
                         <input type="date" name="start" value="{{ $period === 'custom' ? $start->format('Y-m-d') : '' }}"
-                               class="text-sm rounded-lg ring-1 ring-[#E7E1D3] px-3 py-2 text-[#1F2A24] focus:ring-[#D4A73C] focus:border-transparent">
+                               class="flex-1 min-w-[9.5rem] sm:flex-none sm:w-auto text-sm rounded-lg ring-1 ring-[#E7E1D3] px-3 py-2 text-[#1F2A24] focus:ring-[#D4A73C] focus:border-transparent">
                         <span class="text-sm text-[#8A8272]">s/d</span>
                         <input type="date" name="end" value="{{ $period === 'custom' ? $end->format('Y-m-d') : '' }}"
-                               class="text-sm rounded-lg ring-1 ring-[#E7E1D3] px-3 py-2 text-[#1F2A24] focus:ring-[#D4A73C] focus:border-transparent">
+                               class="flex-1 min-w-[9.5rem] sm:flex-none sm:w-auto text-sm rounded-lg ring-1 ring-[#E7E1D3] px-3 py-2 text-[#1F2A24] focus:ring-[#D4A73C] focus:border-transparent">
                         <button type="submit"
-                                class="px-4 py-2 text-sm font-medium rounded-lg ring-1 {{ $period === 'custom' ? 'bg-[#0F2E2B] text-white ring-[#0F2E2B]' : 'bg-white text-[#1F2A24] ring-[#E7E1D3] hover:ring-[#D4A73C]/60' }}">
+                                class="shrink-0 px-4 py-2 text-sm font-medium rounded-lg ring-1 {{ $period === 'custom' ? 'bg-[#0F2E2B] text-white ring-[#0F2E2B]' : 'bg-white text-[#1F2A24] ring-[#E7E1D3] hover:ring-[#D4A73C]/60' }}">
                             Terapkan
                         </button>
                     </form>
@@ -41,7 +43,7 @@
                     <!-- Dropdown Export -->
                     <div class="relative" x-data="{ open: false }">
                         <button @click="open = !open" type="button"
-                                class="px-4 py-2 text-sm font-medium rounded-lg ring-1 bg-white text-[#1F2A24] ring-[#E7E1D3] hover:ring-[#D4A73C]/60 flex items-center gap-2">
+                                class="w-full sm:w-auto px-4 py-2 text-sm font-medium rounded-lg ring-1 bg-white text-[#1F2A24] ring-[#E7E1D3] hover:ring-[#D4A73C]/60 flex items-center justify-center sm:justify-start gap-2">
                             Export
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
@@ -79,7 +81,7 @@
             </div>
 
             <!-- Kartu ringkasan: Omzet (Lunas) -->
-            <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <div class="grid grid-cols-2 xl:grid-cols-4 gap-4">
                 <div class="bg-white rounded-xl ring-1 ring-[#E7E1D3] shadow-sm p-5">
                     <p class="text-xs text-[#8A8272] mb-1">Omzet (Lunas)</p>
                     <p class="text-xl font-semibold text-[#1F2A24]">Rp {{ number_format($summary['omzet'], 0, ',', '.') }}</p>
@@ -106,7 +108,7 @@
             </div>
 
             <!-- Kartu ringkasan: Piutang & Kas -->
-            <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <div class="grid grid-cols-2 xl:grid-cols-4 gap-4">
                 <div class="bg-white rounded-xl ring-1 ring-[#E7E1D3] shadow-sm p-5">
                     <p class="text-xs text-[#8A8272] mb-1">Piutang Baru (periode ini)</p>
                     <p class="text-xl font-semibold text-[#B5482E]">Rp {{ number_format($summary['piutang_nilai'], 0, ',', '.') }}</p>
@@ -128,7 +130,7 @@
             </div>
 
             <!-- Rincian subtotal, diskon, pajak, biaya tambahan (Lunas) -->
-            <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <div class="grid grid-cols-2 xl:grid-cols-4 gap-4">
                 <div class="bg-white rounded-xl ring-1 ring-[#E7E1D3] shadow-sm p-4">
                     <p class="text-xs text-[#8A8272] mb-1">Subtotal Penjualan</p>
                     <p class="text-base font-medium text-[#1F2A24]">Rp {{ number_format($summary['subtotal'], 0, ',', '.') }}</p>
@@ -191,7 +193,7 @@
             <!-- Kontribusi produk -->
             <div class="bg-white rounded-xl ring-1 ring-[#E7E1D3] shadow-sm p-5 overflow-x-auto">
                 <h3 class="text-sm font-medium text-[#8A8272] mb-3">Kontribusi Produk &mdash; Top 15 (Lunas)</h3>
-                <table class="w-full text-sm">
+                <table class="w-full min-w-[720px] text-sm">
                     <thead>
                         <tr class="text-left text-xs text-[#8A8272] border-b border-[#EFEAE0]">
                             <th class="py-2 pr-3 font-medium">Produk</th>
@@ -224,7 +226,7 @@
             <!-- Rekap harian -->
             <div class="bg-white rounded-xl ring-1 ring-[#E7E1D3] shadow-sm p-5 overflow-x-auto">
                 <h3 class="text-sm font-medium text-[#8A8272] mb-3">Rekap Harian</h3>
-                <table class="w-full text-sm">
+                <table class="w-full min-w-[860px] text-sm">
                     <thead>
                         <tr class="text-left text-xs text-[#8A8272] border-b border-[#EFEAE0]">
                             <th class="py-2 pr-3 font-medium">Tanggal</th>
@@ -261,7 +263,7 @@
             <!-- Detail piutang periode ini -->
             <div class="bg-white rounded-xl ring-1 ring-[#E7E1D3] shadow-sm p-5 overflow-x-auto">
                 <h3 class="text-sm font-medium text-[#8A8272] mb-3">Detail Piutang &mdash; Transaksi Belum Lunas (periode ini)</h3>
-                <table class="w-full text-sm">
+                <table class="w-full min-w-[720px] text-sm">
                     <thead>
                         <tr class="text-left text-xs text-[#8A8272] border-b border-[#EFEAE0]">
                             <th class="py-2 pr-3 font-medium">Tanggal</th>

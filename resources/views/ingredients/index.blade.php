@@ -21,22 +21,24 @@
                 <p class="text-2xl font-semibold text-[#B5482E]">{{ $lowStockCount }}</p>
             </div>
 
-            <div class="bg-white rounded-xl ring-1 ring-[#E7E1D3] shadow-sm p-4 flex flex-wrap gap-3 items-center">
-                <form method="GET" class="flex flex-wrap gap-2 items-center flex-1">
+            <div class="bg-white rounded-xl ring-1 ring-[#E7E1D3] shadow-sm p-4 flex flex-col sm:flex-row sm:flex-wrap gap-3 sm:items-center">
+                <form method="GET" class="flex flex-col sm:flex-row sm:flex-wrap gap-2 sm:items-center flex-1 min-w-0">
                     <input type="text" name="search" value="{{ request('search') }}" placeholder="Cari bahan..."
-                           class="text-sm rounded-lg border-[#DDD5C2] shadow-sm focus:border-[#D4A73C] focus:ring-[#D4A73C]">
-                    <label class="flex items-center gap-1.5 text-sm text-[#5B5647]">
-                        <input type="checkbox" name="low_stock" value="1" {{ request('low_stock') ? 'checked' : '' }} onchange="this.form.submit()">
-                        Hanya yang menipis
-                    </label>
-                    <button type="submit" class="px-3 py-1.5 text-sm rounded-lg bg-[#1F2A24] text-white">Cari</button>
+                           class="w-full sm:w-56 text-sm rounded-lg border-[#DDD5C2] shadow-sm focus:border-[#D4A73C] focus:ring-[#D4A73C]">
+                    <div class="flex items-center justify-between sm:justify-start gap-3">
+                        <label class="flex items-center gap-1.5 text-sm text-[#5B5647] whitespace-nowrap">
+                            <input type="checkbox" name="low_stock" value="1" {{ request('low_stock') ? 'checked' : '' }} onchange="this.form.submit()">
+                            Hanya yang menipis
+                        </label>
+                        <button type="submit" class="shrink-0 px-3 py-1.5 text-sm rounded-lg bg-[#1F2A24] text-white">Cari</button>
+                    </div>
                     @if (request('search') || request('low_stock'))
                         <a href="{{ route('ingredients.index') }}" class="text-sm text-[#8A8272] hover:text-[#1F2A24]">Reset</a>
                     @endif
                 </form>
                 <button type="button" x-data
                         x-on:click="$dispatch('open-modal', 'create-ingredient')"
-                        class="inline-flex items-center gap-1.5 px-4 py-2 bg-[#D4A73C] text-[#0F2E2B] text-sm font-semibold rounded-lg hover:bg-[#E0B559] transition">
+                        class="inline-flex items-center justify-center gap-1.5 px-4 py-2 bg-[#D4A73C] text-[#0F2E2B] text-sm font-semibold rounded-lg hover:bg-[#E0B559] transition w-full sm:w-auto">
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
                     </svg>
@@ -49,7 +51,7 @@
                     Belum ada bahan baku.
                 </div>
             @else
-                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
                     @foreach ($ingredients as $ingredient)
                         <div class="bg-white rounded-xl ring-1 {{ $ingredient->isLowStock() ? 'ring-[#F0CFC4]' : 'ring-[#E7E1D3]' }} shadow-sm p-5 flex flex-col gap-4">
                             <div class="flex items-start justify-between gap-2">

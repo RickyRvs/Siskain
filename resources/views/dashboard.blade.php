@@ -19,7 +19,7 @@
             </div>
 
             <!-- Kartu statistik utama: Omzet, Laba, Kas, Transaksi -->
-            <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <div class="grid grid-cols-2 xl:grid-cols-4 gap-4">
                 <div class="bg-white rounded-xl ring-1 ring-[#E7E1D3] shadow-sm p-5">
                     <p class="text-xs text-[#8A8272] mb-1">Omzet Hari Ini <span class="text-[#B5A97A]">(Lunas)</span></p>
                     <p class="text-xl font-semibold text-[#1F2A24]">Rp {{ number_format($todayRevenue, 0, ',', '.') }}</p>
@@ -45,7 +45,7 @@
             </div>
 
             <!-- Kartu statistik sekunder: Piutang & Stok -->
-            <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <div class="grid grid-cols-2 xl:grid-cols-4 gap-4">
                 <div class="bg-white rounded-xl ring-1 ring-[#E7E1D3] shadow-sm p-5">
                     <p class="text-xs text-[#8A8272] mb-1">Piutang Baru Hari Ini</p>
                     <p class="text-xl font-semibold {{ $todayPiutangBaru > 0 ? 'text-[#B5482E]' : 'text-[#1F2A24]' }}">Rp {{ number_format($todayPiutangBaru, 0, ',', '.') }}</p>
@@ -69,8 +69,8 @@
             </div>
 
             <!-- Grafik penjualan & metode pembayaran -->
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div class="lg:col-span-2 bg-white rounded-xl ring-1 ring-[#E7E1D3] shadow-sm p-5">
+            <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
+                <div class="xl:col-span-2 bg-white rounded-xl ring-1 ring-[#E7E1D3] shadow-sm p-5">
                     <h3 class="text-sm font-medium text-[#8A8272] mb-4">Omzet & Piutang Baru &mdash; 7 Hari Terakhir</h3>
                     <div class="h-64">
                         <canvas id="salesTrendChart"></canvas>
@@ -102,7 +102,7 @@
             </div>
 
             <!-- Insight: produk terlaris, piutang teratas, stok kritis -->
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
                 <div class="bg-white rounded-xl ring-1 ring-[#E7E1D3] shadow-sm p-5">
                     <h3 class="text-sm font-medium text-[#8A8272] mb-3">Produk Terlaris <span class="text-[#B5A97A] font-normal">(30 Hari, Lunas)</span></h3>
                     @forelse ($topProducts as $p)
@@ -152,10 +152,10 @@
                 </div>
             </div>
 
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+            <div class="grid grid-cols-1 xl:grid-cols-3 gap-6 items-start">
 
                 <!-- Aksi cepat -->
-                <div class="lg:col-span-2 space-y-3">
+                <div class="xl:col-span-2 space-y-3">
                     <h3 class="text-sm font-medium text-[#8A8272]">Aksi Cepat</h3>
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <a href="{{ route('transactions.create') }}"
@@ -213,7 +213,7 @@
                 </div>
 
                 <!-- Aktivitas terbaru -->
-                <div class="bg-white rounded-xl ring-1 ring-[#E7E1D3] shadow-sm p-5 lg:min-h-[21rem] flex flex-col">
+                <div class="bg-white rounded-xl ring-1 ring-[#E7E1D3] shadow-sm p-5 xl:min-h-[21rem] flex flex-col">
                     <h3 class="text-sm font-medium text-[#8A8272] mb-3">Aktivitas Terbaru</h3>
 
                     @php
