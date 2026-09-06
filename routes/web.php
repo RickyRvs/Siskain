@@ -11,6 +11,7 @@ use App\Http\Controllers\StockMovementController;
 use App\Http\Controllers\TransactionController;
 use App\Http\Controllers\IngredientController;
 use App\Http\Controllers\SuperAdmin\TenantController;
+use App\Http\Controllers\SuperAdmin\TenantUserController;
 use App\Http\Controllers\SuperAdmin\SuperAdminDashboardController;
 use App\Http\Controllers\Owner\SettingController;
 use App\Http\Controllers\Owner\StaffController;
@@ -41,9 +42,18 @@ Route::middleware(['auth', 'verified', 'role:superadmin'])
     ->name('superadmin.')
     ->group(function () {
         Route::get('/', [SuperAdminDashboardController::class, 'index'])->name('dashboard');
+
         Route::resource('tenants', TenantController::class);
         Route::post('tenants/{tenant}/impersonate', [TenantController::class, 'impersonate'])->name('tenants.impersonate');
         Route::post('impersonate/stop', [TenantController::class, 'stopImpersonate'])->name('impersonate.stop');
+
+        // Perpanjang langganan (tombol "Perpanjang" di halaman detail tenant)
+        Route::post('tenants/{tenant}/renew', [TenantController::class, 'renewSubscription'])->name('tenants.renew');
+
+        // Manajemen akun (owner & kasir) di dalam sebuah tenant
+        Route::post('tenants/{tenant}/users', [TenantUserController::class, 'store'])->name('tenants.users.store');
+        Route::post('tenants/{tenant}/users/{user}/reset-password', [TenantUserController::class, 'resetPassword'])->name('tenants.users.reset-password');
+        Route::delete('tenants/{tenant}/users/{user}', [TenantUserController::class, 'destroy'])->name('tenants.users.destroy');
     });
 
 /*
@@ -109,6 +119,8 @@ Route::middleware(['auth', 'verified', 'role:owner,kasir'])->group(function () {
     Route::middleware('menu:transactions')->group(function () {
         Route::resource('transactions', TransactionController::class)->only(['index', 'create', 'store', 'show']);
         Route::post('transactions/{transaction}/pay-piutang', [TransactionController::class, 'payPiutang'])->name('transactions.pay-piutang');
+        Route::patch('transactions/{transaction}/cancel', [TransactionController::class, 'cancel'])->name('transactions.cancel');
+        Route::get('transactions/{transaction}/pdf', [TransactionController::class, 'downloadPdf'])->name('transactions.pdf');
     });
 
     // Laporan & rekap

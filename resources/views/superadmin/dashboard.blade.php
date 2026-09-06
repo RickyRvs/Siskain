@@ -1,3 +1,12 @@
+@php
+    // Angka rupiah dipendekkan (Jt/M) biar muat di kartu statistik yang sempit;
+    // nilai pastinya tetap ada lewat atribut title (muncul saat di-hover).
+    $fmtRupiah = fn ($n) => $n >= 1_000_000_000
+        ? 'Rp ' . rtrim(rtrim(number_format($n / 1_000_000_000, 1, ',', '.'), '0'), ',') . ' M'
+        : ($n >= 1_000_000
+            ? 'Rp ' . rtrim(rtrim(number_format($n / 1_000_000, 1, ',', '.'), '0'), ',') . ' Jt'
+            : 'Rp ' . number_format($n, 0, ',', '.'));
+@endphp
 <x-app-layout>
     <x-slot name="header">
         <h2 class="font-semibold text-xl text-[#1F2A24]">Dashboard Superadmin</h2>
@@ -11,10 +20,10 @@
             @endif
 
             <!-- Kartu statistik -->
-            <div class="grid grid-cols-2 lg:grid-cols-5 gap-4">
+            <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
                 <div class="bg-white rounded-xl ring-1 ring-[#E7E1D3] shadow-sm p-5">
                     <span class="w-9 h-9 rounded-lg bg-[#EAF0EE] text-[#1F2A24] flex items-center justify-center mb-3">
-                        <svg class="w-4.5 h-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg class="w-[18px] h-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 21V7a2 2 0 012-2h4a2 2 0 012 2v14M13 21V11a2 2 0 012-2h4a2 2 0 012 2v10M3 21h18" />
                         </svg>
                     </span>
@@ -25,7 +34,7 @@
 
                 <div class="bg-white rounded-xl ring-1 ring-[#E7E1D3] shadow-sm p-5">
                     <span class="w-9 h-9 rounded-lg bg-[#EAF3EE] text-[#2F6F4E] flex items-center justify-center mb-3">
-                        <svg class="w-4.5 h-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg class="w-[18px] h-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
                         </svg>
                     </span>
@@ -36,29 +45,29 @@
 
                 <div class="bg-white rounded-xl ring-1 ring-[#E7E1D3] shadow-sm p-5">
                     <span class="w-9 h-9 rounded-lg bg-[#FBF1DD] text-[#B5842A] flex items-center justify-center mb-3">
-                        <svg class="w-4.5 h-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg class="w-[18px] h-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.66 0-3 .9-3 2s1.34 2 3 2 3 .9 3 2-1.34 2-3 2m0-8V6m0 2c1.66 0 3 .9 3 2m-3 6v2m0-2c-1.66 0-3-.9-3-2" />
                         </svg>
                     </span>
                     <p class="text-xs text-[#8A8272] mb-1">Total Omzet (Lunas)</p>
-                    <p class="text-xl font-semibold text-[#1F2A24]">Rp {{ number_format($totalOmzet, 0, ',', '.') }}</p>
+                    <p class="text-xl font-semibold text-[#1F2A24]" title="Rp {{ number_format($totalOmzet, 0, ',', '.') }}">{{ $fmtRupiah($totalOmzet) }}</p>
                     <p class="text-xs text-[#8A8272] mt-1">Gabungan semua usaha</p>
                 </div>
 
                 <div class="bg-white rounded-xl ring-1 ring-[#E7E1D3] shadow-sm p-5">
                     <span class="w-9 h-9 rounded-lg bg-[#EAF0F3] text-[#1B6E6E] flex items-center justify-center mb-3">
-                        <svg class="w-4.5 h-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg class="w-[18px] h-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a1 1 0 011-1h1a1 1 0 011 1v6m4 0v-9a1 1 0 011-1h1a1 1 0 011 1v9M5 19v-3a1 1 0 011-1h1a1 1 0 011 1v3M3 19h18" />
                         </svg>
                     </span>
                     <p class="text-xs text-[#8A8272] mb-1">Rata-rata Omzet</p>
-                    <p class="text-xl font-semibold text-[#1F2A24]">Rp {{ number_format($avgOmzetPerTenant, 0, ',', '.') }}</p>
+                    <p class="text-xl font-semibold text-[#1F2A24]" title="Rp {{ number_format($avgOmzetPerTenant, 0, ',', '.') }}">{{ $fmtRupiah($avgOmzetPerTenant) }}</p>
                     <p class="text-xs text-[#8A8272] mt-1">Per usaha aktif</p>
                 </div>
 
-                <div class="bg-white rounded-xl ring-1 ring-[#E7E1D3] shadow-sm p-5 flex flex-col">
+                <div class="col-span-2 sm:col-span-1 bg-white rounded-xl ring-1 ring-[#E7E1D3] shadow-sm p-5 flex flex-col">
                     <span class="w-9 h-9 rounded-lg bg-[#F2F2F2] text-[#8A8272] flex items-center justify-center mb-3">
-                        <svg class="w-4.5 h-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg class="w-[18px] h-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
                         </svg>
                     </span>
@@ -70,7 +79,46 @@
                 </div>
             </div>
 
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            @if ($expiringSoon->isNotEmpty() || $expiredCount > 0)
+                <div class="bg-white rounded-xl ring-1 ring-[#F0CFC4] shadow-sm p-5">
+                    <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
+                        <h3 class="text-sm font-medium text-[#8A8272]">Langganan Akan Berakhir (7 hari)</h3>
+                        @if ($expiredCount > 0)
+                            <a href="{{ route('superadmin.tenants.index', ['status' => 'kadaluarsa']) }}"
+                               class="text-xs font-semibold text-[#B5482E] bg-[#FBEAE6] px-2.5 py-1 rounded-full hover:bg-[#F5D9D0]">
+                                {{ $expiredCount }} usaha sudah kadaluarsa &rarr;
+                            </a>
+                        @endif
+                    </div>
+                    @forelse ($expiringSoon as $t)
+                        <div class="flex flex-col sm:flex-row sm:items-center gap-3 py-2.5 border-b border-[#EFEAE0] last:border-0">
+                            <div class="flex items-center gap-3 min-w-0 flex-1">
+                                <span class="w-9 h-9 rounded-lg flex items-center justify-center text-xs font-bold text-white shrink-0"
+                                      style="background-color: {{ $t->primary_color ?? '#0F2E2B' }}">
+                                    {{ strtoupper(substr($t->name, 0, 1)) }}
+                                </span>
+                                <div class="min-w-0 flex-1">
+                                    <a href="{{ route('superadmin.tenants.show', $t) }}" class="text-sm font-medium text-[#1F2A24] hover:text-[#B5842A] truncate block">{{ $t->name }}</a>
+                                    <p class="text-xs text-[#8A8272] truncate">{{ $t->subscription_plan_label }} &middot; berakhir {{ $t->subscription_expires_at->translatedFormat('d M Y') }}</p>
+                                </div>
+                            </div>
+                            <div class="flex items-center justify-between sm:justify-end gap-3 pl-12 sm:pl-0 shrink-0">
+                                <span class="text-[10px] font-medium uppercase px-2 py-1 rounded-full {{ $t->subscription_badge['bg'] }} {{ $t->subscription_badge['text'] }}">
+                                    {{ $t->subscription_badge['label'] }}
+                                </span>
+                                <form method="POST" action="{{ route('superadmin.tenants.renew', $t) }}">
+                                    @csrf
+                                    <button type="submit" class="text-xs font-medium text-[#1B6E6E] hover:text-[#144F4F] whitespace-nowrap">Perpanjang</button>
+                                </form>
+                            </div>
+                        </div>
+                    @empty
+                        <p class="text-sm text-[#8A8272] py-4 text-center">Tidak ada yang mau berakhir dalam 7 hari ke depan.</p>
+                    @endforelse
+                </div>
+            @endif
+
+            <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
 
                 <!-- Yang lagi online -->
                 <div class="bg-white rounded-xl ring-1 ring-[#E7E1D3] shadow-sm p-5">
@@ -122,7 +170,7 @@
                 </div>
 
                 <!-- Histori perubahan setting -->
-                <div class="bg-white rounded-xl ring-1 ring-[#E7E1D3] shadow-sm p-5">
+                <div class="bg-white rounded-xl ring-1 ring-[#E7E1D3] shadow-sm p-5 md:col-span-2 xl:col-span-1">
                     <h3 class="text-sm font-medium text-[#8A8272] mb-3">Histori Perubahan Setting</h3>
                     @forelse ($recentHistories as $h)
                         <div class="flex gap-3 py-2.5 border-b border-[#EFEAE0] last:border-0">

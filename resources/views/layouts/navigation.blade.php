@@ -19,7 +19,7 @@
 <aside
     x-cloak
     style="--tenant-primary: {{ $brandColor }}"
-    class="fixed inset-y-0 left-0 z-40 w-64 bg-[var(--tenant-primary)] flex flex-col transition-transform duration-200 ease-in-out lg:translate-x-0"
+    class="fixed inset-y-0 left-0 z-40 w-64 bg-[var(--tenant-primary)] flex flex-col transition-transform duration-200 ease-in-out lg:translate-x-0 print:hidden"
     :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full'"
 >
     {{-- Brand --}}
@@ -79,24 +79,48 @@
             </div>
         @else
             {{-- ============ NAV TENANT (OWNER & KASIR) ============ --}}
-            <div class="space-y-1">
-                <a href="{{ route('dashboard') }}" @click="sidebarOpen = false" class="{{ $navLink(request()->routeIs('dashboard')) }}">
-                    <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z" />
-                    </svg>
-                    {{ __('Dashboard') }}
-                </a>
 
-                @if (Route::has('transactions.create') && $currentUser->canAccessMenu('transactions'))
-                    <a href="{{ route('transactions.create') }}" @click="sidebarOpen = false" class="{{ $navLink(request()->routeIs('transactions.create')) }}">
+            {{-- Menu Utama: fitur yang paling sering dipakai sehari-hari --}}
+            <div>
+                <p class="px-3 mb-2 text-xs font-semibold uppercase tracking-wide text-white/30">{{ __('Menu Utama') }}</p>
+                <div class="space-y-1">
+                    <a href="{{ route('dashboard') }}" @click="sidebarOpen = false" class="{{ $navLink(request()->routeIs('dashboard')) }}">
                         <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2H19a1 1 0 01.98 1.2l-1.6 8A1 1 0 0117.4 15H8.4M7 13L5.4 5M7 13l-1.7 2c-.5.6-.1 1.4.7 1.4H17M9 20a1 1 0 11-2 0 1 1 0 012 0zm9 0a1 1 0 11-2 0 1 1 0 012 0z" />
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z" />
                         </svg>
-                        {{ __('Kasir') }}
+                        {{ __('Dashboard') }}
                     </a>
-                @endif
+
+                    @if (Route::has('transactions.create') && $currentUser->canAccessMenu('transactions'))
+                        <a href="{{ route('transactions.create') }}" @click="sidebarOpen = false" class="{{ $navLink(request()->routeIs('transactions.create')) }}">
+                            <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2H19a1 1 0 01.98 1.2l-1.6 8A1 1 0 0117.4 15H8.4M7 13L5.4 5M7 13l-1.7 2c-.5.6-.1 1.4.7 1.4H17M9 20a1 1 0 11-2 0 1 1 0 012 0zm9 0a1 1 0 11-2 0 1 1 0 012 0z" />
+                            </svg>
+                            {{ __('Kasir') }}
+                        </a>
+                    @endif
+
+                    @if ($currentUser->canAccessMenu('transactions'))
+                        <a href="{{ route('transactions.index') }}" @click="sidebarOpen = false" class="{{ $navLink(request()->routeIs('transactions.index') || request()->routeIs('transactions.show')) }}">
+                            <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-6a2 2 0 012-2h2a2 2 0 012 2v6m4 0V7a2 2 0 00-2-2H9a2 2 0 00-2 2v10a2 2 0 002 2h6a2 2 0 002-2z" />
+                            </svg>
+                            {{ __('Transaksi') }}
+                        </a>
+                    @endif
+
+                    @if (Route::has('reports.index') && $currentUser->canAccessMenu('reports'))
+                        <a href="{{ route('reports.index') }}" @click="sidebarOpen = false" class="{{ $navLink(request()->routeIs('reports.*')) }}">
+                            <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a1 1 0 011-1h1a1 1 0 011 1v6m4 0v-9a1 1 0 011-1h1a1 1 0 011 1v9M5 19v-3a1 1 0 011-1h1a1 1 0 011 1v3M3 19h18" />
+                            </svg>
+                            {{ __('Laporan') }}
+                        </a>
+                    @endif
+                </div>
             </div>
 
+            {{-- Data Toko: master data & riwayat pendukung --}}
             <div>
                 <p class="px-3 mb-2 text-xs font-semibold uppercase tracking-wide text-white/30">{{ __('Data Toko') }}</p>
                 <div class="space-y-1">
@@ -135,20 +159,6 @@
                             {{ __('Customer') }}
                         </a>
                     @endif
-                </div>
-            </div>
-
-            <div>
-                <p class="px-3 mb-2 text-xs font-semibold uppercase tracking-wide text-white/30">{{ __('Riwayat') }}</p>
-                <div class="space-y-1">
-                    @if ($currentUser->canAccessMenu('transactions'))
-                        <a href="{{ route('transactions.index') }}" @click="sidebarOpen = false" class="{{ $navLink(request()->routeIs('transactions.index') || request()->routeIs('transactions.show')) }}">
-                            <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-6a2 2 0 012-2h2a2 2 0 012 2v6m4 0V7a2 2 0 00-2-2H9a2 2 0 00-2 2v10a2 2 0 002 2h6a2 2 0 002-2z" />
-                            </svg>
-                            {{ __('Transaksi') }}
-                        </a>
-                    @endif
 
                     @if (Route::has('stock-movements.index') && $currentUser->canAccessMenu('stock-movements'))
                         <a href="{{ route('stock-movements.index') }}" @click="sidebarOpen = false" class="{{ $navLink(request()->routeIs('stock-movements.*')) }}">
@@ -156,15 +166,6 @@
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l9-9 9 9M5 10v10a1 1 0 001 1h4v-6h4v6h4a1 1 0 001-1V10" />
                             </svg>
                             {{ __('Riwayat Stok') }}
-                        </a>
-                    @endif
-
-                    @if (Route::has('reports.index') && $currentUser->canAccessMenu('reports'))
-                        <a href="{{ route('reports.index') }}" @click="sidebarOpen = false" class="{{ $navLink(request()->routeIs('reports.*')) }}">
-                            <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a1 1 0 011-1h1a1 1 0 011 1v6m4 0v-9a1 1 0 011-1h1a1 1 0 011 1v9M5 19v-3a1 1 0 011-1h1a1 1 0 011 1v3M3 19h18" />
-                            </svg>
-                            {{ __('Laporan') }}
                         </a>
                     @endif
                 </div>

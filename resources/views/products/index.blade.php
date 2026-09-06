@@ -149,7 +149,21 @@
                                 class="p-4 sm:p-6 max-h-[75vh] overflow-y-auto"
                                 x-data="{
                                     tracksStock: {{ $product->tracks_stock ? 'true' : 'false' }},
-                                    rows: {{ json_encode($product->ingredients->map(fn ($i) => ['ingredient_id' => $i->id, 'qty_used' => (float) $i->pivot->qty_used])->values()) }}
+                                    rows: {{ json_encode($product->ingredients->map(fn ($i) => ['ingredient_id' => $i->id, 'qty_used' => (float) $i->pivot->qty_used])->values()) }},
+                                    priceModalDisplay: '',
+                                    priceJualDisplay: '',
+                                    formatRupiah(value) {
+                                        let angka = String(value).replace(/\D/g, '');
+                                        if (!angka) return '';
+                                        return new Intl.NumberFormat('id-ID').format(angka);
+                                    },
+                                    unformatRupiah(value) {
+                                        return String(value).replace(/\D/g, '') || '0';
+                                    },
+                                    init() {
+                                        this.priceModalDisplay = this.formatRupiah('{{ (int) $product->price_modal }}');
+                                        this.priceJualDisplay = this.formatRupiah('{{ (int) $product->price_jual }}');
+                                    }
                                 }"
                             >
                                 @csrf @method('PUT')
@@ -185,11 +199,35 @@
                                 <div class="grid grid-cols-2 gap-4 mb-4">
                                     <div>
                                         <label class="block text-sm font-medium text-[#1F2A24] mb-1">Harga Modal</label>
-                                        <input type="number" step="0.01" name="price_modal" value="{{ $product->price_modal }}" class="w-full rounded-lg border-[#E7E1D3] shadow-sm focus:border-[#D4A73C] focus:ring-[#D4A73C]" required>
+                                        <div class="relative">
+                                            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-[#8A8272] text-sm pointer-events-none">Rp</span>
+                                            <input
+                                                type="text"
+                                                inputmode="numeric"
+                                                x-model="priceModalDisplay"
+                                                @input="priceModalDisplay = formatRupiah($event.target.value)"
+                                                class="w-full pl-9 rounded-lg border-[#E7E1D3] shadow-sm focus:border-[#D4A73C] focus:ring-[#D4A73C]"
+                                                required
+                                            >
+                                        </div>
+                                        <input type="hidden" name="price_modal" :value="unformatRupiah(priceModalDisplay)">
+                                        @error('price_modal') <p class="text-[#B5482E] text-sm mt-1">{{ $message }}</p> @enderror
                                     </div>
                                     <div>
                                         <label class="block text-sm font-medium text-[#1F2A24] mb-1">Harga Jual</label>
-                                        <input type="number" step="0.01" name="price_jual" value="{{ $product->price_jual }}" class="w-full rounded-lg border-[#E7E1D3] shadow-sm focus:border-[#D4A73C] focus:ring-[#D4A73C]" required>
+                                        <div class="relative">
+                                            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-[#8A8272] text-sm pointer-events-none">Rp</span>
+                                            <input
+                                                type="text"
+                                                inputmode="numeric"
+                                                x-model="priceJualDisplay"
+                                                @input="priceJualDisplay = formatRupiah($event.target.value)"
+                                                class="w-full pl-9 rounded-lg border-[#E7E1D3] shadow-sm focus:border-[#D4A73C] focus:ring-[#D4A73C]"
+                                                required
+                                            >
+                                        </div>
+                                        <input type="hidden" name="price_jual" :value="unformatRupiah(priceJualDisplay)">
+                                        @error('price_jual') <p class="text-[#B5482E] text-sm mt-1">{{ $message }}</p> @enderror
                                     </div>
                                 </div>
 
@@ -268,7 +306,24 @@
             method="POST"
             enctype="multipart/form-data"
             class="p-4 sm:p-6 max-h-[75vh] overflow-y-auto"
-            x-data="{ tracksStock: {{ old('tracks_stock', true) ? 'true' : 'false' }}, rows: [] }"
+            x-data="{
+                tracksStock: {{ old('tracks_stock', true) ? 'true' : 'false' }},
+                rows: [],
+                priceModalDisplay: '',
+                priceJualDisplay: '',
+                formatRupiah(value) {
+                    let angka = String(value).replace(/\D/g, '');
+                    if (!angka) return '';
+                    return new Intl.NumberFormat('id-ID').format(angka);
+                },
+                unformatRupiah(value) {
+                    return String(value).replace(/\D/g, '') || '0';
+                },
+                init() {
+                    this.priceModalDisplay = this.formatRupiah('{{ old('price_modal', 0) }}');
+                    this.priceJualDisplay = this.formatRupiah('{{ old('price_jual', 0) }}');
+                }
+            }"
         >
             @csrf
 
@@ -304,12 +359,34 @@
             <div class="grid grid-cols-2 gap-4 mb-4">
                 <div>
                     <label class="block text-sm font-medium text-[#1F2A24] mb-1">Harga Modal</label>
-                    <input type="number" step="0.01" name="price_modal" value="{{ old('price_modal', 0) }}" class="w-full rounded-lg border-[#E7E1D3] shadow-sm focus:border-[#D4A73C] focus:ring-[#D4A73C]" required>
+                    <div class="relative">
+                        <span class="absolute left-3 top-1/2 -translate-y-1/2 text-[#8A8272] text-sm pointer-events-none">Rp</span>
+                        <input
+                            type="text"
+                            inputmode="numeric"
+                            x-model="priceModalDisplay"
+                            @input="priceModalDisplay = formatRupiah($event.target.value)"
+                            class="w-full pl-9 rounded-lg border-[#E7E1D3] shadow-sm focus:border-[#D4A73C] focus:ring-[#D4A73C]"
+                            required
+                        >
+                    </div>
+                    <input type="hidden" name="price_modal" :value="unformatRupiah(priceModalDisplay)">
                     @error('price_modal') <p class="text-[#B5482E] text-sm mt-1">{{ $message }}</p> @enderror
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-[#1F2A24] mb-1">Harga Jual</label>
-                    <input type="number" step="0.01" name="price_jual" value="{{ old('price_jual', 0) }}" class="w-full rounded-lg border-[#E7E1D3] shadow-sm focus:border-[#D4A73C] focus:ring-[#D4A73C]" required>
+                    <div class="relative">
+                        <span class="absolute left-3 top-1/2 -translate-y-1/2 text-[#8A8272] text-sm pointer-events-none">Rp</span>
+                        <input
+                            type="text"
+                            inputmode="numeric"
+                            x-model="priceJualDisplay"
+                            @input="priceJualDisplay = formatRupiah($event.target.value)"
+                            class="w-full pl-9 rounded-lg border-[#E7E1D3] shadow-sm focus:border-[#D4A73C] focus:ring-[#D4A73C]"
+                            required
+                        >
+                    </div>
+                    <input type="hidden" name="price_jual" :value="unformatRupiah(priceJualDisplay)">
                     @error('price_jual') <p class="text-[#B5482E] text-sm mt-1">{{ $message }}</p> @enderror
                 </div>
             </div>

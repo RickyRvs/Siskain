@@ -9,16 +9,18 @@ use Illuminate\Support\Facades\Hash;
 
 class StaffController extends Controller
 {
-    public function index(Request $request)
-    {
-        $staff = User::where('tenant_id', $request->user()->tenant_id)
-            ->where('role', 'kasir')
-            ->latest()
-            ->paginate(10);
+   public function index(Request $request)
+{
+    $staff = User::where('tenant_id', $request->user()->tenant_id)
+        ->where('role', 'kasir')
+        ->latest()
+        ->paginate(10);
 
-        return view('owner.staff.index', compact('staff'));
-    }
-
+    return view('owner.staff.index', [
+        'staff' => $staff,
+        'menus' => config('menus'),
+    ]);
+}
     public function create()
     {
         return view('owner.staff.create', ['menus' => config('menus')]);

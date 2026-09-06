@@ -39,9 +39,19 @@ class SuperAdminDashboardController extends Controller
             ->limit(5)
             ->get();
 
+        // Langganan (bulanan/tahunan) yang mau habis dalam 7 hari ke depan, biar superadmin
+        // bisa follow-up tagihan sebelum tenant-nya kena suspend / komplain mendadak.
+        $expiringSoon = Tenant::expiringSoon(7)
+            ->orderBy('subscription_expires_at')
+            ->limit(8)
+            ->get();
+
+        $expiredCount = Tenant::expiredSubscription()->count();
+
         return view('superadmin.dashboard', compact(
             'totalTenants', 'activeTenants', 'newTenantsThisMonth', 'onlineUsers',
-            'totalOmzet', 'avgOmzetPerTenant', 'recentHistories', 'tenants'
+            'totalOmzet', 'avgOmzetPerTenant', 'recentHistories', 'tenants',
+            'expiringSoon', 'expiredCount'
         ));
     }
 }

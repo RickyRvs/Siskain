@@ -10,6 +10,7 @@ use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Models\StockMovement;
 use App\Models\Transaction;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -19,8 +20,16 @@ class TransactionController extends Controller
     public function index(Request $request)
     {
         $transactions = Transaction::with(['user', 'customer'])
+            ->when($request->filled('search'), function ($q) use ($request) {
+                $search = $request->search;
+                $q->where(function ($sub) use ($search) {
+                    $sub->where('invoice_number', 'like', "%{$search}%")
+                        ->orWhereHas('customer', fn ($cq) => $cq->where('name', 'like', "%{$search}%"));
+                });
+            })
             ->when($request->status, fn ($q) => $q->where('status', $request->status))
-            ->when($request->date, fn ($q) => $q->whereDate('created_at', $request->date))
+            ->when($request->date_from, fn ($q) => $q->whereDate('created_at', '>=', $request->date_from))
+            ->when($request->date_to, fn ($q) => $q->whereDate('created_at', '<=', $request->date_to))
             ->latest()
             ->paginate(15)
             ->withQueryString();
@@ -294,5 +303,96 @@ class TransactionController extends Controller
         });
 
         return back()->with('success', 'Pembayaran piutang berhasil dicatat.');
+    }
+
+    /**
+     * Batalkan transaksi. Stok produk/varian & bahan baku yang tadi dipotong
+     * pas store() dikembalikan lagi di sini, dicatat sebagai StockMovement/
+     * IngredientStockMovement tipe 'in' biar tetap ketelusur di riwayat stok.
+     */
+    public function cancel(Request $request, Transaction $transaction)
+    {
+        if ($transaction->status === 'batal') {
+            return back()->with('error', 'Transaksi ini sudah dibatalkan sebelumnya.');
+        }
+
+        $validated = $request->validate([
+            'reason' => 'nullable|string|max:255',
+        ]);
+
+        DB::transaction(function () use ($transaction, $validated) {
+            $transaction->load('items.product.ingredients', 'items.variant');
+
+            $note = 'Pembatalan transaksi ' . $transaction->invoice_number
+                . (!empty($validated['reason']) ? ' - ' . $validated['reason'] : '');
+
+            foreach ($transaction->items as $item) {
+                if ($item->product_variant_id) {
+                    $variant = ProductVariant::lockForUpdate()->find($item->product_variant_id);
+
+                    if ($variant) {
+                        $variant->increment('stock', $item->qty);
+                        StockMovement::create([
+                            'product_id' => $variant->product_id,
+                            'product_variant_id' => $variant->id,
+                            'type' => 'in',
+                            'qty' => $item->qty,
+                            'note' => $note,
+                            'user_id' => auth()->id(),
+                        ]);
+                    }
+                } else {
+                    $product = Product::with('ingredients')->lockForUpdate()->find($item->product_id);
+
+                    if ($product) {
+                        if ($product->tracks_stock) {
+                            $product->increment('stock', $item->qty);
+                            StockMovement::create([
+                                'product_id' => $product->id,
+                                'type' => 'in',
+                                'qty' => $item->qty,
+                                'note' => $note,
+                                'user_id' => auth()->id(),
+                            ]);
+                        }
+
+                        foreach ($product->ingredients as $ingredient) {
+                            $restored = $ingredient->pivot->qty_used * $item->qty;
+
+                            $ingredientLocked = Ingredient::lockForUpdate()->find($ingredient->id);
+                            if ($ingredientLocked) {
+                                $ingredientLocked->increment('stock', $restored);
+                                IngredientStockMovement::create([
+                                    'ingredient_id' => $ingredient->id,
+                                    'type' => 'in',
+                                    'qty' => $restored,
+                                    'note' => $note . ' (' . $product->name . ')',
+                                    'user_id' => auth()->id(),
+                                ]);
+                            }
+                        }
+                    }
+                }
+            }
+
+            $transaction->update(['status' => 'batal']);
+        });
+
+        return redirect()->route('transactions.show', $transaction)
+            ->with('success', 'Transaksi berhasil dibatalkan, stok sudah dikembalikan.');
+    }
+
+    /**
+     * Download struk transaksi sebagai PDF (butuh package barryvdh/laravel-dompdf).
+     */
+    public function downloadPdf(Transaction $transaction)
+    {
+        $transaction->load(['items.product', 'items.variant', 'user', 'customer', 'payments' => fn ($q) => $q->oldest()]);
+        $tenant = auth()->user()->tenant ?? null;
+
+        $pdf = Pdf::loadView('transactions.pdf', compact('transaction', 'tenant'))
+            ->setPaper('a4', 'portrait');
+
+        return $pdf->download('struk-' . $transaction->invoice_number . '.pdf');
     }
 }

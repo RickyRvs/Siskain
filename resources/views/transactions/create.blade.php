@@ -28,7 +28,7 @@
                  ])->values(),
              ])->values() }}
          })">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8" :class="items.length > 0 ? 'pb-24 lg:pb-0' : ''">
 
             @if (session('error'))
                 <div class="mb-4 p-4 bg-[#FBEAE6] border border-[#F0CFC4] text-[#B5482E] rounded-lg text-sm">{{ session('error') }}</div>
@@ -46,18 +46,68 @@
 
             <form action="{{ route('transactions.store') }}" method="POST" @submit="beforeSubmit">
                 @csrf
+                {{-- Diskon/pajak/biaya tambahan belum dipakai — dikirim tetap 0 --}}
+                <input type="hidden" name="discount" value="0">
+                <input type="hidden" name="tax" value="0">
+                <input type="hidden" name="additional_fee" value="0">
 
-                <div class="grid grid-cols-1 lg:grid-cols-5 gap-6 items-start">
+                <div class="lg:gap-6 lg:items-start" :class="items.length > 0 ? 'lg:grid lg:grid-cols-5' : ''">
 
-                    <!-- ==================== KOLOM KIRI: KERANJANG ==================== -->
-                    <div class="lg:col-span-2 lg:sticky lg:top-6 space-y-4 order-2 lg:order-1">
+                    <!-- ==================== KERANJANG ==================== -->
+                    <!-- Kosong: keranjang tidak dirender sama sekali (produk full-width). -->
+                    <!-- Ada isi: sidebar sticky di layar lg+, bottom sheet di tablet/mobile. -->
+                    <div x-show="items.length > 0" x-cloak class="lg:col-span-2 lg:order-1">
 
-                        <div class="bg-white rounded-xl ring-1 ring-[#E7E1D3] shadow-sm overflow-hidden flex flex-col lg:max-h-[calc(100vh-3rem)]">
+                        <!-- Bar ringkas (mobile/tablet) - tap untuk buka keranjang penuh -->
+                        <button type="button"
+                                x-show="!mobileCartOpen"
+                                x-transition
+                                @click="mobileCartOpen = true"
+                                class="lg:hidden fixed inset-x-0 bottom-0 z-40 flex items-center justify-between gap-3 bg-[#1F2A24] text-white px-5 pt-3.5 pb-[calc(0.875rem+env(safe-area-inset-bottom))] shadow-[0_-6px_20px_rgba(15,46,43,0.35)]">
+                            <span class="flex items-center gap-2 text-sm font-medium">
+                                <svg class="w-4 h-4 text-[#D4A73C]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 00-3 3h15.75m-12.75-3h11.218c1.121-2.3 1.8-4.807 2.03-7.408.078-.867-.517-1.649-1.387-1.649H5.106M7.5 14.25L5.106 5.25M9.75 20.25a.75.75 0 11-1.5 0 .75.75 0 011.5 0zm9 0a.75.75 0 11-1.5 0 .75.75 0 011.5 0z" />
+                                </svg>
+                                <span x-text="items.length + ' item'"></span>
+                            </span>
+                            <span class="flex items-center gap-1.5">
+                                <span class="font-semibold" x-text="'Rp ' + formatRp(total)"></span>
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.5 15.75l7.5-7.5 7.5 7.5" /></svg>
+                            </span>
+                        </button>
+
+                        <!-- Backdrop (mobile/tablet, hanya saat keranjang terbuka penuh) -->
+                        <div x-show="mobileCartOpen" x-cloak x-transition.opacity
+                             @click="mobileCartOpen = false"
+                             class="lg:hidden fixed inset-0 bg-[#1F2A24]/50 z-40"></div>
+
+                        <!-- Panel keranjang: sticky sidebar (lg+) / bottom sheet (mobile) -->
+                        <div
+                            class="bg-white flex-col overflow-hidden
+                                   fixed inset-x-0 bottom-0 z-50 rounded-t-2xl shadow-2xl max-h-[88vh]
+                                   lg:sticky lg:top-6 lg:bottom-auto lg:inset-x-auto lg:z-auto
+                                   lg:rounded-xl lg:rounded-t-xl lg:shadow-sm lg:ring-1 lg:ring-[#E7E1D3]
+                                   lg:max-h-[calc(100vh-3rem)]"
+                            :class="mobileCartOpen ? 'flex' : 'hidden lg:flex'"
+                            x-transition:enter="transition ease-out duration-200"
+                            x-transition:enter-start="translate-y-full lg:translate-y-0"
+                            x-transition:enter-end="translate-y-0"
+                        >
+                            <!-- Drag handle (mobile only) -->
+                            <div class="lg:hidden flex justify-center pt-2.5 pb-1 shrink-0">
+                                <span class="w-10 h-1.5 rounded-full bg-[#DDD5C2]"></span>
+                            </div>
+
                             <!-- Header keranjang -->
-                            <div class="px-5 py-4 border-b border-[#F0ECE0]">
+                            <div class="px-5 py-4 border-b border-[#F0ECE0] shrink-0">
                                 <div class="flex items-center justify-between mb-3">
                                     <h3 class="font-semibold text-[#1F2A24]">Keranjang</h3>
-                                    <span class="text-xs font-medium text-[#B5842A] bg-[#FBF0DA] px-2 py-0.5 rounded-full" x-text="items.length + ' item'"></span>
+                                    <div class="flex items-center gap-2">
+                                        <span class="text-xs font-medium text-[#B5842A] bg-[#FBF0DA] px-2 py-0.5 rounded-full" x-text="items.length + ' item'"></span>
+                                        <button type="button" @click="mobileCartOpen = false" class="lg:hidden text-[#8A8272] hover:text-[#1F2A24] -mr-1 p-1">
+                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                                        </button>
+                                    </div>
                                 </div>
                                 <select name="customer_id" class="w-full text-sm border-[#DDD5C2] rounded-lg shadow-sm focus:border-[#D4A73C] focus:ring-[#D4A73C]">
                                     <option value="">Customer &mdash; Umum</option>
@@ -69,12 +119,6 @@
 
                             <!-- Daftar item -->
                             <div class="flex-1 overflow-y-auto divide-y divide-[#F0ECE0] px-5">
-                                <template x-if="items.length === 0">
-                                    <div class="py-10 text-center text-sm text-[#B0A98F]">
-                                        Keranjang masih kosong.<br>Klik produk di sebelah kanan untuk menambahkan.
-                                    </div>
-                                </template>
-
                                 <template x-for="(item, index) in items" :key="item.key">
                                     <div class="py-3 flex items-start gap-3">
                                         <!-- Thumbnail item di keranjang -->
@@ -91,18 +135,26 @@
                                         <div class="flex-1 min-w-0">
                                             <p class="text-sm font-medium text-[#1F2A24] truncate" x-text="item.name"></p>
                                             <p class="text-xs text-[#8A8272]" x-show="item.variant_name" x-text="item.variant_name"></p>
-                                            <div class="flex items-center gap-2 mt-1.5">
+                                            <div class="flex items-center gap-1.5 mt-1.5">
                                                 <button type="button" @click="changeQty(index, -1)"
-                                                        class="w-6 h-6 flex items-center justify-center rounded-md border border-[#DDD5C2] text-[#5B5647] hover:bg-[#F6F3EC]">&minus;</button>
-                                                <span class="w-6 text-center text-sm tabular-nums" x-text="item.qty"></span>
+                                                        class="w-8 h-8 lg:w-7 lg:h-7 flex items-center justify-center rounded-full border border-[#DDD5C2] text-[#5B5647] hover:bg-[#F6F3EC] active:scale-90 transition">
+                                                    <svg x-show="item.qty > 1" class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19.5 12h-15"/></svg>
+                                                    <svg x-show="item.qty <= 1" x-cloak class="w-3.5 h-3.5 text-[#B94A3D]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 7h12M9.5 7V5.5a1 1 0 011-1h3a1 1 0 011 1V7m-8 0l.6 12.1a1.5 1.5 0 001.5 1.4h6.8a1.5 1.5 0 001.5-1.4L18 7"/></svg>
+                                                </button>
+                                                <span class="w-6 text-center text-sm font-medium tabular-nums" x-text="item.qty"></span>
                                                 <button type="button" @click="changeQty(index, 1)"
-                                                        class="w-6 h-6 flex items-center justify-center rounded-md border border-[#DDD5C2] text-[#5B5647] hover:bg-[#F6F3EC]">+</button>
-                                                <span class="text-xs text-[#8A8272] ml-1" x-show="item.stock > 0" x-text="'stok ' + item.stock"></span>
+                                                        class="w-8 h-8 lg:w-7 lg:h-7 flex items-center justify-center rounded-full border border-[#DDD5C2] text-[#5B5647] hover:bg-[#F6F3EC] active:scale-90 transition">
+                                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4.5v15m7.5-7.5h-15"/></svg>
+                                                </button>
+                                                <span class="text-[11px] text-[#8A8272] ml-1 bg-[#F6F3EC] px-1.5 py-0.5 rounded-full" x-show="item.stock > 0" x-text="'stok ' + item.stock"></span>
                                             </div>
                                         </div>
                                         <div class="text-right shrink-0">
                                             <p class="text-sm font-medium text-[#1F2A24]" x-text="'Rp ' + formatRp(item.price * item.qty)"></p>
-                                            <button type="button" @click="removeItem(index)" class="text-xs text-[#B94A3D] hover:text-[#8F372D] mt-1">Hapus</button>
+                                            <button type="button" @click="removeItem(index)" title="Hapus item" aria-label="Hapus item"
+                                                    class="inline-flex items-center justify-center w-7 h-7 mt-1 -mr-1 rounded-full text-[#B94A3D] hover:bg-[#FBEAE6] active:scale-90 transition">
+                                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 7h12M9.5 7V5.5a1 1 0 011-1h3a1 1 0 011 1V7m-8 0l.6 12.1a1.5 1.5 0 001.5 1.4h6.8a1.5 1.5 0 001.5-1.4L18 7"/></svg>
+                                            </button>
                                         </div>
 
                                         <input type="hidden" :name="'items['+index+'][product_id]'" :value="item.product_id">
@@ -112,32 +164,10 @@
                                 </template>
                             </div>
 
-                            <!-- Diskon / pajak / biaya -->
-                            <div class="px-5 py-4 border-t border-[#F0ECE0] grid grid-cols-3 gap-2">
-                                <div>
-                                    <label class="block text-xs text-[#8A8272] mb-1">Diskon</label>
-                                    <input type="number" name="discount" x-model.number="discount" @input="recalc" value="0" min="0"
-                                           class="w-full text-sm border-[#DDD5C2] rounded-md shadow-sm focus:border-[#D4A73C] focus:ring-[#D4A73C]">
-                                </div>
-                                <div>
-                                    <label class="block text-xs text-[#8A8272] mb-1">Pajak</label>
-                                    <input type="number" name="tax" x-model.number="tax" @input="recalc" value="0" min="0"
-                                           class="w-full text-sm border-[#DDD5C2] rounded-md shadow-sm focus:border-[#D4A73C] focus:ring-[#D4A73C]">
-                                </div>
-                                <div>
-                                    <label class="block text-xs text-[#8A8272] mb-1">Biaya Lain</label>
-                                    <input type="number" name="additional_fee" x-model.number="additionalFee" @input="recalc" value="0" min="0"
-                                           class="w-full text-sm border-[#DDD5C2] rounded-md shadow-sm focus:border-[#D4A73C] focus:ring-[#D4A73C]">
-                                </div>
-                            </div>
-
                             <!-- Ringkasan & pembayaran -->
-                            <div class="px-5 py-4 border-t border-[#F0ECE0] bg-[#FAF8F2] space-y-3">
-                                <div class="space-y-1 text-sm">
-                                    <div class="flex justify-between text-[#8A8272]"><span>Subtotal</span><span x-text="'Rp ' + formatRp(subtotal)"></span></div>
-                                    <div class="flex justify-between font-semibold text-[#1F2A24] text-base pt-1 border-t border-[#E7E1D3]">
-                                        <span>Total</span><span x-text="'Rp ' + formatRp(total)"></span>
-                                    </div>
+                            <div class="px-5 pt-4 pb-[calc(1rem+env(safe-area-inset-bottom))] lg:pb-4 border-t border-[#F0ECE0] bg-[#FAF8F2] space-y-3 shrink-0">
+                                <div class="flex justify-between font-semibold text-[#1F2A24] text-base">
+                                    <span>Total</span><span x-text="'Rp ' + formatRp(total)"></span>
                                 </div>
 
                                 <div class="grid grid-cols-2 gap-2">
@@ -152,8 +182,14 @@
                                     </div>
                                     <div>
                                         <label class="block text-xs text-[#8A8272] mb-1">Dibayar</label>
-                                        <input type="number" name="paid_amount" x-model.number="paidAmount" value="0" min="0" required
-                                               class="w-full text-sm border-[#DDD5C2] rounded-md shadow-sm focus:border-[#D4A73C] focus:ring-[#D4A73C]">
+                                        <div class="relative">
+                                            <span class="absolute left-2 top-1/2 -translate-y-1/2 text-[10px] text-[#8A8272] pointer-events-none">Rp</span>
+                                            <input type="text" inputmode="numeric" x-model="paidAmountDisplay"
+                                                   @input="paidAmount = unformatRp($event.target.value); paidAmountDisplay = formatRp(paidAmount)"
+                                                   required
+                                                   class="w-full pl-7 text-sm border-[#DDD5C2] rounded-md shadow-sm focus:border-[#D4A73C] focus:ring-[#D4A73C]">
+                                        </div>
+                                        <input type="hidden" name="paid_amount" :value="paidAmount">
                                     </div>
                                 </div>
 
@@ -173,53 +209,74 @@
                         </div>
                     </div>
 
-                    <!-- ==================== KOLOM KANAN: KATALOG PRODUK ==================== -->
-                    <div class="lg:col-span-3 space-y-4 order-1 lg:order-2">
+                    <!-- ==================== KATALOG PRODUK ==================== -->
+                    <div class="space-y-4" :class="items.length > 0 ? 'lg:col-span-3 lg:order-2' : ''">
 
-                        <!-- Search -->
-                        <div class="relative">
-                            <svg class="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#B0A98F]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.35-4.35M17 10a7 7 0 11-14 0 7 7 0 0114 0z" />
-                            </svg>
-                            <input type="text" x-model="search" placeholder="Cari produk..."
-                                   class="w-full pl-10 pr-4 py-2.5 text-sm border-[#DDD5C2] rounded-lg shadow-sm focus:border-[#D4A73C] focus:ring-[#D4A73C]">
-                        </div>
+                        <!-- Search + kategori (sticky, biar tetap gampang dijangkau pas scroll produk) -->
+                        <div class="sticky top-0 lg:top-6 z-10 -mx-4 sm:mx-0 px-4 sm:px-0 pt-1 pb-2 space-y-3 bg-[#FAF8F2]/95 backdrop-blur-sm">
+                            <div class="relative">
+                                <svg class="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#B0A98F]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.35-4.35M17 10a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                </svg>
+                                <input type="text" x-model="search" placeholder="Cari produk..."
+                                       class="w-full pl-10 pr-4 py-2.5 text-sm border-[#DDD5C2] rounded-lg shadow-sm focus:border-[#D4A73C] focus:ring-[#D4A73C]">
+                            </div>
 
-                        <!-- Kategori -->
-                        <div class="flex gap-2 overflow-x-auto pb-1" x-show="categories.length > 1">
-                            <template x-for="cat in categories" :key="cat">
-                                <button type="button" @click="activeCategory = cat"
-                                        class="shrink-0 px-3.5 py-1.5 rounded-full text-sm font-medium border transition"
-                                        :class="activeCategory === cat ? 'bg-[#1F2A24] text-white border-[#1F2A24]' : 'bg-white text-[#5B5647] border-[#DDD5C2] hover:border-[#B0A98F]'"
-                                        x-text="cat"></button>
-                            </template>
+                            <div class="flex gap-2 overflow-x-auto pb-1 -mb-1" x-show="categories.length > 1" style="scrollbar-width:none">
+                                <template x-for="cat in categories" :key="cat">
+                                    <button type="button" @click="activeCategory = cat"
+                                            class="shrink-0 px-3.5 py-1.5 rounded-full text-sm font-medium border transition"
+                                            :class="activeCategory === cat ? 'bg-[#1F2A24] text-white border-[#1F2A24]' : 'bg-white text-[#5B5647] border-[#DDD5C2] hover:border-[#B0A98F]'"
+                                            x-text="cat"></button>
+                                </template>
+                            </div>
                         </div>
 
                         <!-- Grid produk -->
-                        <div class="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3">
+                        <div class="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4"
+                             :class="items.length > 0 ? 'xl:grid-cols-4' : 'lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6'">
                             <template x-for="p in filteredProducts()" :key="p.id">
                                 <button type="button" @click="addToCart(p)" :disabled="p.tracks_stock && p.stock <= 0 && !p.has_variant"
-                                        class="text-left bg-white rounded-xl ring-1 ring-[#E7E1D3] overflow-hidden hover:ring-[#D4A73C] hover:shadow-md transition disabled:opacity-40 disabled:cursor-not-allowed">
+                                        class="group text-left bg-white rounded-2xl ring-1 ring-[#E7E1D3] overflow-hidden hover:ring-[#D4A73C] hover:shadow-lg hover:-translate-y-0.5 active:scale-[0.97] transition-all duration-150 disabled:opacity-50 disabled:hover:translate-y-0 disabled:hover:shadow-none disabled:cursor-not-allowed">
 
                                     <!-- Thumbnail produk: foto asli kalau ada, fallback ke inisial -->
-                                    <div class="h-24 flex items-center justify-center overflow-hidden"
+                                    <div class="relative h-28 sm:h-32 flex items-center justify-center overflow-hidden"
                                          :class="!p.photo ? categoryColor(p.category).bg : 'bg-[#F6F3EC]'">
                                         <template x-if="p.photo">
-                                            <img :src="p.photo" :alt="p.name" class="w-full h-full object-cover" loading="lazy">
+                                            <img :src="p.photo" :alt="p.name"
+                                                 class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                                                 :class="p.tracks_stock && p.stock <= 0 && !p.has_variant ? 'grayscale opacity-60' : ''"
+                                                 loading="lazy">
                                         </template>
                                         <template x-if="!p.photo">
-                                            <span class="w-9 h-9 rounded-full flex items-center justify-center text-sm font-semibold"
-                                                  :class="[categoryColor(p.category).bg, categoryColor(p.category).text, 'ring-2 ring-white']"
+                                            <span class="w-11 h-11 rounded-full flex items-center justify-center text-sm font-semibold shadow-sm"
+                                                  :class="[categoryColor(p.category).bg, categoryColor(p.category).text, 'ring-2 ring-white', p.tracks_stock && p.stock <= 0 && !p.has_variant ? 'opacity-50' : '']"
                                                   x-text="p.name.substring(0,2).toUpperCase()"></span>
                                         </template>
+
+                                        <!-- Badge stok rendah -->
+                                        <span x-show="p.tracks_stock && !p.has_variant && p.stock <= 5 && p.stock > 0"
+                                              class="absolute top-2 left-2 text-[10px] font-semibold text-[#8A6D1D] bg-[#FBF0DA]/95 px-2 py-0.5 rounded-full shadow-sm"
+                                              x-text="'Sisa ' + p.stock"></span>
+
+                                        <!-- Overlay habis -->
+                                        <span x-show="p.tracks_stock && !p.has_variant && p.stock <= 0" x-cloak
+                                              class="absolute inset-0 flex items-center justify-center">
+                                            <span class="text-[11px] font-semibold text-white bg-[#1F2A24]/80 px-3 py-1 rounded-full">Habis</span>
+                                        </span>
+
+                                        <!-- Afordansi quick-add -->
+                                        <span x-show="!(p.tracks_stock && p.stock <= 0 && !p.has_variant)"
+                                              class="absolute bottom-2 right-2 w-7 h-7 rounded-full bg-[#1F2A24] text-white flex items-center justify-center shadow-md group-active:scale-90 group-hover:bg-[#D4A73C] group-hover:text-[#1F2A24] transition">
+                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4.5v15m7.5-7.5h-15"/></svg>
+                                        </span>
                                     </div>
 
-                                    <div class="p-3">
-                                        <p class="text-sm font-medium text-[#1F2A24] leading-snug line-clamp-2" x-text="p.name"></p>
+                                    <div class="p-2.5 sm:p-3">
+                                        <p class="text-sm font-medium text-[#1F2A24] leading-snug line-clamp-2 min-h-[2.5em]" x-text="p.name"></p>
                                         <div class="flex items-center justify-between mt-1.5">
-                                            <span class="text-sm font-semibold text-[#1F2A24]" x-text="'Rp ' + formatRp(p.price)"></span>
-                                            <span class="text-[11px] text-[#B5842A]" x-show="p.tracks_stock && !p.has_variant && p.stock <= 5 && p.stock > 0" x-text="'sisa ' + p.stock"></span>
-                                            <span class="text-[11px] text-[#B94A3D] font-medium" x-show="p.tracks_stock && !p.has_variant && p.stock <= 0">Habis</span>
+                                            <span class="text-sm font-semibold text-[#1F2A24] tabular-nums" x-text="'Rp ' + formatRp(p.price)"></span>
+                                            <span x-show="p.has_variant" class="text-[10px] text-[#8A8272]">varian</span>
                                         </div>
                                     </div>
                                 </button>
@@ -227,6 +284,7 @@
 
                             <template x-if="filteredProducts().length === 0">
                                 <div class="col-span-full py-16 text-center text-sm text-[#B0A98F]">
+                                    <svg class="w-10 h-10 mx-auto mb-2 text-[#DDD5C2]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M21 21l-4.35-4.35M17 10a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
                                     Tidak ada produk yang cocok.
                                 </div>
                             </template>
@@ -237,7 +295,7 @@
 
             <!-- ==================== MODAL PILIH VARIAN ==================== -->
             <div x-show="variantPicker.product" x-cloak
-                 class="fixed inset-0 z-50 flex items-center justify-center p-4"
+                 class="fixed inset-0 z-[60] flex items-center justify-center p-4"
                  style="display: none;">
                 <div class="absolute inset-0 bg-[#1F2A24]/50" @click="variantPicker.product = null"></div>
                 <div class="relative bg-white rounded-xl shadow-lg w-full max-w-sm p-5" x-show="variantPicker.product">
@@ -287,12 +345,11 @@
                 items: [],
                 search: '',
                 activeCategory: 'Semua',
-                discount: 0,
-                tax: 0,
-                additionalFee: 0,
                 paidAmount: 0,
+                paidAmountDisplay: '0',
                 subtotal: 0,
                 total: 0,
+                mobileCartOpen: false,
                 variantPicker: { product: null },
                 _pendingProduct: null,
 
@@ -356,7 +413,10 @@
                 changeQty(index, delta) {
                     const item = this.items[index];
                     const next = item.qty + delta;
-                    if (next < 1) return;
+                    if (next < 1) {
+                        this.removeItem(index);
+                        return;
+                    }
                     if (item.stock > 0 && next > item.stock) return;
                     item.qty = next;
                     this.recalc();
@@ -365,16 +425,21 @@
                 removeItem(index) {
                     this.items.splice(index, 1);
                     this.recalc();
+                    if (this.items.length === 0) this.mobileCartOpen = false;
                 },
 
                 recalc() {
                     this.subtotal = this.items.reduce((sum, item) => sum + (item.price * item.qty || 0), 0);
-                    const raw = this.subtotal - (this.discount || 0) + (this.tax || 0) + (this.additionalFee || 0);
-                    this.total = Math.max(0, raw);
+                    this.total = this.subtotal;
                 },
 
                 formatRp(value) {
                     return new Intl.NumberFormat('id-ID').format(value || 0);
+                },
+
+                unformatRp(value) {
+                    const digits = String(value).replace(/\D/g, '');
+                    return digits ? parseInt(digits, 10) : 0;
                 },
 
                 beforeSubmit() {

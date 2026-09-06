@@ -36,42 +36,79 @@
                     <p class="text-2xl font-semibold text-[#1F2A24]">Rp {{ number_format($stats['today_omzet'], 0, ',', '.') }}</p>
                     <p class="text-xs text-[#8A8272] mt-0.5">total transaksi lunas &amp; piutang</p>
                 </div>
-                <div class="bg-white rounded-xl ring-1 ring-[#F0CFC4] shadow-sm p-5">
+                <a href="{{ route('transactions.index', ['status' => 'piutang']) }}" class="bg-white rounded-xl ring-1 ring-[#F0CFC4] shadow-sm p-5 hover:bg-[#FBEAE6]/40 transition">
                     <p class="text-xs text-[#B5482E] uppercase tracking-wide mb-1">Piutang Aktif</p>
                     <p class="text-2xl font-semibold text-[#B5482E]">Rp {{ number_format($stats['piutang_total'], 0, ',', '.') }}</p>
-                    <p class="text-xs text-[#8A8272] mt-0.5">{{ $stats['piutang_count'] }} invoice belum lunas</p>
-                </div>
-            </div>
-
-            <!-- Filter bar -->
-            <div class="bg-white rounded-xl ring-1 ring-[#E7E1D3] shadow-sm p-4 flex flex-wrap gap-3 items-center">
-                <form method="GET" class="flex flex-wrap gap-2 items-center flex-1">
-                    <select name="status" class="text-sm rounded-lg border-[#E7E1D3] shadow-sm focus:border-[#D4A73C] focus:ring-[#D4A73C]" onchange="this.form.submit()">
-                        <option value="">Semua Status</option>
-                        <option value="lunas" {{ request('status') === 'lunas' ? 'selected' : '' }}>Lunas</option>
-                        <option value="piutang" {{ request('status') === 'piutang' ? 'selected' : '' }}>Piutang</option>
-                        <option value="batal" {{ request('status') === 'batal' ? 'selected' : '' }}>Batal</option>
-                    </select>
-                    <input type="date" name="date" value="{{ request('date') }}"
-                           class="text-sm rounded-lg border-[#E7E1D3] shadow-sm focus:border-[#D4A73C] focus:ring-[#D4A73C]" onchange="this.form.submit()">
-                    @if (request('status') || request('date'))
-                        <a href="{{ route('transactions.index') }}" class="text-sm text-[#8A8272] hover:text-[#1F2A24] inline-flex items-center gap-1">
-                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-                            Reset
-                        </a>
-                    @endif
-                </form>
-                <a href="{{ route('transactions.create') }}"
-                   class="inline-flex items-center gap-1.5 px-4 py-2 bg-[#D4A73C] text-[#0F2E2B] text-sm font-semibold rounded-lg hover:bg-[#E0B559] transition">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                    </svg>
-                    Transaksi Baru
+                    <p class="text-xs text-[#8A8272] mt-0.5">{{ $stats['piutang_count'] }} invoice belum lunas &middot; klik buat filter</p>
                 </a>
             </div>
 
-            <!-- Tabel -->
-            <div class="bg-white rounded-xl ring-1 ring-[#E7E1D3] shadow-sm overflow-hidden">
+            <!-- Filter bar -->
+            <div class="bg-white rounded-xl ring-1 ring-[#E7E1D3] shadow-sm p-4 space-y-3">
+                <form method="GET" class="space-y-3">
+                    <div class="relative">
+                        <svg class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[#8A8272]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.35-4.35M17 10a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        </svg>
+                        <input type="text" name="search" value="{{ request('search') }}" placeholder="Cari invoice atau nama customer..."
+                               class="w-full pl-9 text-sm rounded-lg border-[#E7E1D3] shadow-sm focus:border-[#D4A73C] focus:ring-[#D4A73C]">
+                    </div>
+
+                    <div class="flex flex-wrap gap-2 items-center">
+                        <select name="status" class="text-sm rounded-lg border-[#E7E1D3] shadow-sm focus:border-[#D4A73C] focus:ring-[#D4A73C]" onchange="this.form.submit()">
+                            <option value="">Semua Status</option>
+                            <option value="lunas" {{ request('status') === 'lunas' ? 'selected' : '' }}>Lunas</option>
+                            <option value="piutang" {{ request('status') === 'piutang' ? 'selected' : '' }}>Piutang</option>
+                            <option value="batal" {{ request('status') === 'batal' ? 'selected' : '' }}>Batal</option>
+                        </select>
+
+                        <div class="flex items-center gap-1.5">
+                            <input type="date" name="date_from" value="{{ request('date_from') }}"
+                                   class="text-sm rounded-lg border-[#E7E1D3] shadow-sm focus:border-[#D4A73C] focus:ring-[#D4A73C]">
+                            <span class="text-xs text-[#8A8272]">s/d</span>
+                            <input type="date" name="date_to" value="{{ request('date_to') }}"
+                                   class="text-sm rounded-lg border-[#E7E1D3] shadow-sm focus:border-[#D4A73C] focus:ring-[#D4A73C]">
+                        </div>
+
+                        <button type="submit" class="inline-flex items-center gap-1.5 px-3 py-2 bg-[#1F2A24] text-white text-sm font-medium rounded-lg hover:bg-[#16201B] transition">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.35-4.35M17 10a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                            Cari
+                        </button>
+
+                        @if (request()->anyFilled(['search', 'status', 'date_from', 'date_to']))
+                            <a href="{{ route('transactions.index') }}" class="text-sm text-[#8A8272] hover:text-[#1F2A24] inline-flex items-center gap-1">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                                Reset
+                            </a>
+                        @endif
+
+                        <a href="{{ route('transactions.create') }}"
+                           class="ml-auto inline-flex items-center gap-1.5 px-4 py-2 bg-[#D4A73C] text-[#0F2E2B] text-sm font-semibold rounded-lg hover:bg-[#E0B559] transition">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                            </svg>
+                            Transaksi Baru
+                        </a>
+                    </div>
+                </form>
+            </div>
+
+            @php
+                $hasFilter = request()->anyFilled(['search', 'status', 'date_from', 'date_to']);
+                $badgeClass = fn ($status) => match($status) {
+                    'lunas' => 'bg-[#EAF3EE] text-[#2F6F4E]',
+                    'piutang' => 'bg-[#FBF0DA] text-[#B5842A]',
+                    default => 'bg-[#F6F3EC] text-[#8A8272]',
+                };
+                $dotClass = fn ($status) => match($status) {
+                    'lunas' => 'bg-[#2F6F4E]',
+                    'piutang' => 'bg-[#B5842A]',
+                    default => 'bg-[#8A8272]',
+                };
+            @endphp
+
+            <!-- Tabel: tampil di layar lg ke atas -->
+            <div class="hidden lg:block bg-white rounded-xl ring-1 ring-[#E7E1D3] shadow-sm overflow-hidden">
                 <div class="overflow-x-auto">
                     <table class="min-w-full divide-y divide-[#E7E1D3]">
                         <thead class="bg-[#F6F3EC]">
@@ -102,20 +139,8 @@
                                     <td class="px-6 py-4 text-sm text-[#8A8272]">{{ $transaction->user->name }}</td>
                                     <td class="px-6 py-4 text-sm font-medium text-[#1F2A24] text-right">Rp {{ number_format($transaction->total, 0, ',', '.') }}</td>
                                     <td class="px-6 py-4">
-                                        @php
-                                            $badge = match($transaction->status) {
-                                                'lunas' => 'bg-[#EAF3EE] text-[#2F6F4E]',
-                                                'piutang' => 'bg-[#FBF0DA] text-[#B5842A]',
-                                                default => 'bg-[#F6F3EC] text-[#8A8272]',
-                                            };
-                                            $dot = match($transaction->status) {
-                                                'lunas' => 'bg-[#2F6F4E]',
-                                                'piutang' => 'bg-[#B5842A]',
-                                                default => 'bg-[#8A8272]',
-                                            };
-                                        @endphp
-                                        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium {{ $badge }}">
-                                            <span class="w-1.5 h-1.5 rounded-full {{ $dot }}"></span>
+                                        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium {{ $badgeClass($transaction->status) }}">
+                                            <span class="w-1.5 h-1.5 rounded-full {{ $dotClass($transaction->status) }}"></span>
                                             {{ ucfirst($transaction->status) }}
                                         </span>
                                     </td>
@@ -130,8 +155,8 @@
                             @empty
                                 <tr>
                                     <td colspan="7" class="px-6 py-16 text-center">
-                                        <p class="text-sm text-[#8A8272]">Belum ada transaksi{{ request('status') || request('date') ? ' yang cocok dengan filter ini' : '' }}.</p>
-                                        @if (request('status') || request('date'))
+                                        <p class="text-sm text-[#8A8272]">Belum ada transaksi{{ $hasFilter ? ' yang cocok dengan filter ini' : '' }}.</p>
+                                        @if ($hasFilter)
                                             <a href="{{ route('transactions.index') }}" class="mt-2 inline-block text-sm text-[#D4A73C] font-medium hover:underline">Hapus filter</a>
                                         @else
                                             <a href="{{ route('transactions.create') }}" class="mt-2 inline-block text-sm text-[#D4A73C] font-medium hover:underline">+ Buat transaksi pertama</a>
@@ -142,6 +167,47 @@
                         </tbody>
                     </table>
                 </div>
+            </div>
+
+            <!-- Card list: tampil di bawah lg (tablet/HP) -->
+            <div class="lg:hidden space-y-3">
+                @forelse ($transactions as $transaction)
+                    <a href="{{ route('transactions.show', $transaction) }}"
+                       class="block bg-white rounded-xl ring-1 ring-[#E7E1D3] shadow-sm p-4 hover:ring-[#D4A73C]/50 transition">
+                        <div class="flex items-start justify-between gap-2 mb-2">
+                            <div class="flex items-center gap-2.5 min-w-0">
+                                <div class="w-8 h-8 rounded-full bg-[#F3E7C4] text-[#8A6D1D] flex items-center justify-center text-xs font-semibold shrink-0">
+                                    {{ strtoupper(substr($transaction->customer->name ?? 'U', 0, 1)) }}
+                                </div>
+                                <div class="min-w-0">
+                                    <p class="font-mono text-sm text-[#1F2A24] truncate">{{ $transaction->invoice_number }}</p>
+                                    <p class="text-xs text-[#8A8272] truncate">{{ $transaction->customer->name ?? 'Umum' }}</p>
+                                </div>
+                            </div>
+                            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium shrink-0 {{ $badgeClass($transaction->status) }}">
+                                <span class="w-1.5 h-1.5 rounded-full {{ $dotClass($transaction->status) }}"></span>
+                                {{ ucfirst($transaction->status) }}
+                            </span>
+                        </div>
+                        <div class="flex items-center justify-between gap-2 pt-2 border-t border-dashed border-[#E7E1D3]">
+                            <div class="text-xs text-[#8A8272]">
+                                <span>{{ $transaction->user->name }}</span>
+                                <span class="mx-1">&middot;</span>
+                                <span>{{ $transaction->created_at->format('d/m/Y H:i') }}</span>
+                            </div>
+                            <p class="text-sm font-semibold text-[#1F2A24]">Rp {{ number_format($transaction->total, 0, ',', '.') }}</p>
+                        </div>
+                    </a>
+                @empty
+                    <div class="bg-white rounded-xl ring-1 ring-[#E7E1D3] shadow-sm px-6 py-16 text-center">
+                        <p class="text-sm text-[#8A8272]">Belum ada transaksi{{ $hasFilter ? ' yang cocok dengan filter ini' : '' }}.</p>
+                        @if ($hasFilter)
+                            <a href="{{ route('transactions.index') }}" class="mt-2 inline-block text-sm text-[#D4A73C] font-medium hover:underline">Hapus filter</a>
+                        @else
+                            <a href="{{ route('transactions.create') }}" class="mt-2 inline-block text-sm text-[#D4A73C] font-medium hover:underline">+ Buat transaksi pertama</a>
+                        @endif
+                    </div>
+                @endforelse
             </div>
 
             <div>{{ $transactions->links() }}</div>
