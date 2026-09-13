@@ -1,563 +1,451 @@
 <x-app-layout>
-    <div class="py-6">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
+    <x-slot name="header">
+        <div class="flex items-center gap-3">
+            <div class="w-1.5 h-7 rounded-full bg-[#D4A73C]"></div>
+            <h2 class="font-semibold text-xl text-[#1F2A24] leading-tight">Laporan &amp; Rekap</h2>
+        </div>
+    </x-slot>
 
-            <!-- Header + filter periode + export -->
-            <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-                <div>
-                    <h2 class="text-xl font-semibold text-[#1F2A24]">Laporan & Rekap</h2>
-                    <p class="text-sm text-[#8A8272] mt-0.5">
-                        {{ $start->translatedFormat('d M Y') }} &mdash; {{ $end->translatedFormat('d M Y') }}
+    <div class="py-4 sm:py-6" x-data="{ tab: 'harian' }">
+        <div class="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 space-y-4 sm:space-y-6">
+
+            <!-- ==================== FILTER PERIODE ==================== -->
+            <div class="bg-white rounded-xl ring-1 ring-[#E7E1D3] shadow-sm p-4" x-data="{ showCustom: {{ $period === 'custom' ? 'true' : 'false' }} }">
+                <div class="flex flex-wrap items-center gap-2">
+                    <a href="{{ route('reports.index', ['period' => 'today']) }}"
+                       class="px-3.5 py-1.5 rounded-full text-sm font-medium border transition {{ $period === 'today' ? 'bg-[#1F2A24] text-white border-[#1F2A24]' : 'bg-white text-[#5B5647] border-[#DDD5C2] hover:border-[#B0A98F]' }}">
+                        Hari Ini
+                    </a>
+                    <a href="{{ route('reports.index', ['period' => 'week']) }}"
+                       class="px-3.5 py-1.5 rounded-full text-sm font-medium border transition {{ $period === 'week' ? 'bg-[#1F2A24] text-white border-[#1F2A24]' : 'bg-white text-[#5B5647] border-[#DDD5C2] hover:border-[#B0A98F]' }}">
+                        Minggu Ini
+                    </a>
+                    <a href="{{ route('reports.index', ['period' => 'month']) }}"
+                       class="px-3.5 py-1.5 rounded-full text-sm font-medium border transition {{ $period === 'month' ? 'bg-[#1F2A24] text-white border-[#1F2A24]' : 'bg-white text-[#5B5647] border-[#DDD5C2] hover:border-[#B0A98F]' }}">
+                        Bulan Ini
+                    </a>
+                    <button type="button" @click="showCustom = !showCustom"
+                            class="px-3.5 py-1.5 rounded-full text-sm font-medium border transition {{ $period === 'custom' ? 'bg-[#1F2A24] text-white border-[#1F2A24]' : 'bg-white text-[#5B5647] border-[#DDD5C2] hover:border-[#B0A98F]' }}">
+                        Custom
+                    </button>
+
+                    <span class="ml-0 sm:ml-auto text-xs text-[#8A8272] w-full sm:w-auto">
+                        Periode: <span class="font-medium text-[#1F2A24]">{{ $start->format('d/m/Y') }} &ndash; {{ $end->format('d/m/Y') }}</span>
+                    </span>
+                </div>
+
+                <form method="GET" action="{{ route('reports.index') }}" x-show="showCustom" x-cloak
+                      class="mt-3 pt-3 border-t border-dashed border-[#E7E1D3] flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-2">
+                    <input type="hidden" name="period" value="custom">
+                    <div class="flex items-center gap-1.5">
+                        <input type="date" name="start" value="{{ request('start', $start->format('Y-m-d')) }}"
+                               class="text-sm rounded-lg border-[#DDD5C2] shadow-sm focus:border-[#D4A73C] focus:ring-[#D4A73C]">
+                        <span class="text-xs text-[#8A8272]">s/d</span>
+                        <input type="date" name="end" value="{{ request('end', $end->format('Y-m-d')) }}"
+                               class="text-sm rounded-lg border-[#DDD5C2] shadow-sm focus:border-[#D4A73C] focus:ring-[#D4A73C]">
+                    </div>
+                    <button type="submit" class="px-4 py-2 bg-[#1F2A24] text-white text-sm font-medium rounded-lg hover:bg-[#16201B] transition">
+                        Terapkan
+                    </button>
+                </form>
+            </div>
+
+            <!-- ==================== KARTU RINGKASAN ==================== -->
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+                <div class="bg-[#1F2A24] rounded-xl p-4 sm:p-5 relative overflow-hidden">
+                    <div class="absolute -right-4 -bottom-4 w-20 h-20 rounded-full bg-[#D4A73C]/10"></div>
+                    <p class="text-xs text-[#B9C2BC] uppercase tracking-wide mb-1">Omzet</p>
+                    <p class="text-xl sm:text-2xl font-semibold text-white truncate">Rp {{ number_format($summary['omzet'], 0, ',', '.') }}</p>
+                    <p class="text-xs text-[#8FA096] mt-0.5">{{ $summary['jumlah_lunas'] }} transaksi lunas</p>
+                </div>
+
+                <div class="bg-white rounded-xl ring-1 ring-[#E7E1D3] shadow-sm p-4 sm:p-5">
+                    <p class="text-xs text-[#8A8272] uppercase tracking-wide mb-1">Profit Kotor</p>
+                    <p class="text-xl sm:text-2xl font-semibold text-[#2F6F4E] truncate">Rp {{ number_format($summary['profit'], 0, ',', '.') }}</p>
+                    <p class="text-xs text-[#8A8272] mt-0.5">margin {{ $summary['margin'] }}%</p>
+                    <p class="text-xs font-medium {{ $summary['laba_bersih'] >= 0 ? 'text-[#2F6F4E]' : 'text-[#B5482E]' }} mt-1 pt-1 border-t border-dashed border-[#E7E1D3]">
+                        Laba Bersih: Rp {{ number_format($summary['laba_bersih'], 0, ',', '.') }}
                     </p>
                 </div>
 
-                <div class="flex flex-col sm:flex-row sm:flex-wrap items-stretch sm:items-center gap-2">
-                    <div class="flex gap-2 overflow-x-auto -mx-1 px-1 sm:mx-0 sm:px-0 sm:overflow-visible">
-                        <a href="{{ route('reports.index', ['period' => 'today']) }}"
-                           class="shrink-0 px-4 py-2 text-sm font-medium rounded-lg ring-1 {{ $period === 'today' ? 'bg-[#0F2E2B] text-white ring-[#0F2E2B]' : 'bg-white text-[#1F2A24] ring-[#E7E1D3] hover:ring-[#D4A73C]/60' }}">
-                            Hari Ini
-                        </a>
-                        <a href="{{ route('reports.index', ['period' => 'week']) }}"
-                           class="shrink-0 px-4 py-2 text-sm font-medium rounded-lg ring-1 {{ $period === 'week' ? 'bg-[#0F2E2B] text-white ring-[#0F2E2B]' : 'bg-white text-[#1F2A24] ring-[#E7E1D3] hover:ring-[#D4A73C]/60' }}">
-                            Minggu Ini
-                        </a>
-                        <a href="{{ route('reports.index', ['period' => 'month']) }}"
-                           class="shrink-0 px-4 py-2 text-sm font-medium rounded-lg ring-1 {{ $period === 'month' ? 'bg-[#0F2E2B] text-white ring-[#0F2E2B]' : 'bg-white text-[#1F2A24] ring-[#E7E1D3] hover:ring-[#D4A73C]/60' }}">
-                            Bulan Ini
-                        </a>
-                    </div>
+                <div class="bg-white rounded-xl ring-1 ring-[#E7E1D3] shadow-sm p-4 sm:p-5">
+                    <p class="text-xs text-[#8A8272] uppercase tracking-wide mb-1">Kas Masuk</p>
+                    <p class="text-xl sm:text-2xl font-semibold text-[#1F2A24] truncate">Rp {{ number_format($summary['kas_masuk'], 0, ',', '.') }}</p>
+                    <p class="text-xs text-[#8A8272] mt-0.5">termasuk cicilan piutang</p>
+                </div>
 
-                    <form action="{{ route('reports.index') }}" method="GET" class="flex flex-wrap items-center gap-2">
-                        <input type="hidden" name="period" value="custom">
-                        <input type="date" name="start" value="{{ $period === 'custom' ? $start->format('Y-m-d') : '' }}"
-                               class="flex-1 min-w-[9.5rem] sm:flex-none sm:w-auto text-sm rounded-lg ring-1 ring-[#E7E1D3] px-3 py-2 text-[#1F2A24] focus:ring-[#D4A73C] focus:border-transparent">
-                        <span class="text-sm text-[#8A8272]">s/d</span>
-                        <input type="date" name="end" value="{{ $period === 'custom' ? $end->format('Y-m-d') : '' }}"
-                               class="flex-1 min-w-[9.5rem] sm:flex-none sm:w-auto text-sm rounded-lg ring-1 ring-[#E7E1D3] px-3 py-2 text-[#1F2A24] focus:ring-[#D4A73C] focus:border-transparent">
-                        <button type="submit"
-                                class="shrink-0 px-4 py-2 text-sm font-medium rounded-lg ring-1 {{ $period === 'custom' ? 'bg-[#0F2E2B] text-white ring-[#0F2E2B]' : 'bg-white text-[#1F2A24] ring-[#E7E1D3] hover:ring-[#D4A73C]/60' }}">
-                            Terapkan
-                        </button>
-                    </form>
+                <a href="{{ route('reports.index', array_merge(request()->query(), [])) }}#piutang-tab"
+                   @click.prevent="tab = 'piutang'; document.getElementById('report-tabs')?.scrollIntoView({behavior:'smooth'})"
+                   class="bg-white rounded-xl ring-1 ring-[#F0CFC4] shadow-sm p-4 sm:p-5 hover:bg-[#FBEAE6]/40 transition">
+                    <p class="text-xs text-[#B5482E] uppercase tracking-wide mb-1">Piutang Aktif</p>
+                    <p class="text-xl sm:text-2xl font-semibold text-[#B5482E] truncate">Rp {{ number_format($summary['piutang_sisa'], 0, ',', '.') }}</p>
+                    <p class="text-xs text-[#8A8272] mt-0.5">{{ $summary['jumlah_piutang'] }} invoice belum lunas</p>
+                </a>
+            </div>
 
-                    <!-- Dropdown Export -->
-                    <div class="relative" x-data="{ open: false }">
-                        <button @click="open = !open" type="button"
-                                class="w-full sm:w-auto px-4 py-2 text-sm font-medium rounded-lg ring-1 bg-white text-[#1F2A24] ring-[#E7E1D3] hover:ring-[#D4A73C]/60 flex items-center justify-center sm:justify-start gap-2">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5 5-5M12 15V3" />
-                            </svg>
-                            Export
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
-                            </svg>
-                        </button>
-                        <div x-show="open" @click.away="open = false" x-cloak
-                             class="absolute right-0 mt-2 w-52 bg-white rounded-lg ring-1 ring-[#E7E1D3] shadow-lg z-10 overflow-hidden">
-
-                            <p class="px-3 pt-2 text-xs text-[#8A8272]">Keuangan</p>
-                            <a href="{{ route('reports.export.pdf', ['type' => 'keuangan', 'period' => $period, 'start' => $start->format('Y-m-d'), 'end' => $end->format('Y-m-d')]) }}"
-                               class="block px-3 py-2 text-sm hover:bg-[#F7F4EC]">PDF</a>
-                            <a href="{{ route('reports.export.excel', ['type' => 'keuangan', 'period' => $period, 'start' => $start->format('Y-m-d'), 'end' => $end->format('Y-m-d')]) }}"
-                               class="block px-3 py-2 text-sm hover:bg-[#F7F4EC]">Excel</a>
-
-                            <p class="px-3 pt-2 text-xs text-[#8A8272] border-t border-[#EFEAE0] mt-1">Stok</p>
-                            <a href="{{ route('reports.export.pdf', ['type' => 'stok']) }}"
-                               class="block px-3 py-2 text-sm hover:bg-[#F7F4EC]">PDF</a>
-                            <a href="{{ route('reports.export.excel', ['type' => 'stok']) }}"
-                               class="block px-3 py-2 text-sm hover:bg-[#F7F4EC]">Excel</a>
-
-                            <p class="px-3 pt-2 text-xs text-[#8A8272] border-t border-[#EFEAE0] mt-1">Piutang</p>
-                            <a href="{{ route('reports.export.pdf', ['type' => 'piutang', 'period' => $period, 'start' => $start->format('Y-m-d'), 'end' => $end->format('Y-m-d')]) }}"
-                               class="block px-3 py-2 text-sm hover:bg-[#F7F4EC]">PDF</a>
-                            <a href="{{ route('reports.export.excel', ['type' => 'piutang', 'period' => $period, 'start' => $start->format('Y-m-d'), 'end' => $end->format('Y-m-d')]) }}"
-                               class="block px-3 py-2 text-sm hover:bg-[#F7F4EC]">Excel</a>
-                        </div>
-                    </div>
+            <!-- Baris ke-2: angka pendukung, lebih kecil -->
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 text-sm">
+                <div class="bg-white rounded-lg ring-1 ring-[#E7E1D3] px-4 py-3">
+                    <p class="text-[11px] text-[#8A8272] uppercase tracking-wide">Rata-rata / Transaksi</p>
+                    <p class="font-semibold text-[#1F2A24] mt-0.5 truncate">Rp {{ number_format($summary['rata_rata_transaksi'], 0, ',', '.') }}</p>
+                </div>
+                <div class="bg-white rounded-lg ring-1 ring-[#E7E1D3] px-4 py-3">
+                    <p class="text-[11px] text-[#8A8272] uppercase tracking-wide">Diskon Diberikan</p>
+                    <p class="font-semibold text-[#1F2A24] mt-0.5 truncate">Rp {{ number_format($summary['diskon'], 0, ',', '.') }}</p>
+                </div>
+                <div class="bg-white rounded-lg ring-1 ring-[#E7E1D3] px-4 py-3">
+                    <p class="text-[11px] text-[#8A8272] uppercase tracking-wide">Pajak Terkumpul</p>
+                    <p class="font-semibold text-[#1F2A24] mt-0.5 truncate">Rp {{ number_format($summary['pajak'], 0, ',', '.') }}</p>
+                </div>
+                <div class="bg-white rounded-lg ring-1 ring-[#E7E1D3] px-4 py-3">
+                    <p class="text-[11px] text-[#8A8272] uppercase tracking-wide">Piutang Sudah Dibayar</p>
+                    <p class="font-semibold text-[#1F2A24] mt-0.5 truncate">Rp {{ number_format($summary['piutang_sudah_dibayar'], 0, ',', '.') }}</p>
+                </div>
+                <div class="bg-white rounded-lg ring-1 ring-[#E7E1D3] px-4 py-3">
+                    <p class="text-[11px] text-[#8A8272] uppercase tracking-wide">Pengeluaran Operasional</p>
+                    <p class="font-semibold text-[#B5482E] mt-0.5 truncate">Rp {{ number_format($summary['pengeluaran_operasional'], 0, ',', '.') }}</p>
                 </div>
             </div>
 
-            <!-- Navigasi cepat antar section -->
-            <div class="flex gap-2 overflow-x-auto -mx-1 px-1 pb-1">
-                <a href="#ringkasan" class="shrink-0 px-3 py-1.5 text-xs font-medium rounded-full bg-white ring-1 ring-[#E7E1D3] text-[#6B6456] hover:ring-[#D4A73C]/60 hover:text-[#1F2A24] transition">Ringkasan</a>
-                <a href="#grafik" class="shrink-0 px-3 py-1.5 text-xs font-medium rounded-full bg-white ring-1 ring-[#E7E1D3] text-[#6B6456] hover:ring-[#D4A73C]/60 hover:text-[#1F2A24] transition">Grafik Tren</a>
-                <a href="#pembayaran" class="shrink-0 px-3 py-1.5 text-xs font-medium rounded-full bg-white ring-1 ring-[#E7E1D3] text-[#6B6456] hover:ring-[#D4A73C]/60 hover:text-[#1F2A24] transition">Pembayaran & Status</a>
-                <a href="#produk" class="shrink-0 px-3 py-1.5 text-xs font-medium rounded-full bg-white ring-1 ring-[#E7E1D3] text-[#6B6456] hover:ring-[#D4A73C]/60 hover:text-[#1F2A24] transition">Kontribusi Produk</a>
-                <a href="#harian" class="shrink-0 px-3 py-1.5 text-xs font-medium rounded-full bg-white ring-1 ring-[#E7E1D3] text-[#6B6456] hover:ring-[#D4A73C]/60 hover:text-[#1F2A24] transition">Rekap Harian</a>
-                <a href="#piutang" class="shrink-0 px-3 py-1.5 text-xs font-medium rounded-full bg-white ring-1 ring-[#E7E1D3] text-[#6B6456] hover:ring-[#D4A73C]/60 hover:text-[#1F2A24] transition">Detail Piutang</a>
-            </div>
-
-            <!-- Catatan definisi -->
-            <div class="flex items-start gap-3 bg-[#FBF7EA] ring-1 ring-[#EAD9A0] rounded-xl px-4 py-3 text-xs text-[#6B5E33]">
-                <svg class="w-4 h-4 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                <p>
-                    <strong>Omzet & Profit</strong> di bawah cuma dihitung dari transaksi yang sudah <strong>lunas</strong>.
-                    Transaksi <strong>piutang</strong> belum diakui sebagai omzet — nilainya ditampilkan terpisah di kartu "Piutang" dan tabel detail piutang, sampai statusnya berubah jadi lunas.
-                </p>
-            </div>
-
-            <div id="ringkasan" class="scroll-mt-6 space-y-4">
-
-                <!-- Kartu ringkasan utama: Omzet, Modal, Profit, Transaksi -->
-                <div class="grid grid-cols-2 xl:grid-cols-4 gap-4">
-                    <div class="bg-white rounded-xl ring-1 ring-[#E7E1D3] shadow-sm p-5">
-                        <div class="flex items-center gap-3 mb-2">
-                            <span class="w-9 h-9 shrink-0 rounded-lg bg-[#FBF0DA] text-[#B5842A] flex items-center justify-center">
-                                <svg class="w-4.5 h-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a1 1 0 011-1h1a1 1 0 011 1v6m4 0v-9a1 1 0 011-1h1a1 1 0 011 1v9M5 19v-3a1 1 0 011-1h1a1 1 0 011 1v3M3 19h18" />
-                                </svg>
-                            </span>
-                            <p class="text-xs text-[#8A8272]">Omzet (Lunas)</p>
-                        </div>
-                        <p class="text-xl font-semibold text-[#1F2A24]">Rp {{ number_format($summary['omzet'], 0, ',', '.') }}</p>
-                    </div>
-                    <div class="bg-white rounded-xl ring-1 ring-[#E7E1D3] shadow-sm p-5">
-                        <div class="flex items-center gap-3 mb-2">
-                            <span class="w-9 h-9 shrink-0 rounded-lg bg-[#E9F1F1] text-[#1B6E6E] flex items-center justify-center">
-                                <svg class="w-4.5 h-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-                                </svg>
-                            </span>
-                            <p class="text-xs text-[#8A8272]">Total Modal (Lunas)</p>
-                        </div>
-                        <p class="text-xl font-semibold text-[#1F2A24]">Rp {{ number_format($summary['modal'], 0, ',', '.') }}</p>
-                    </div>
-                    <div class="bg-white rounded-xl ring-1 ring-[#E7E1D3] shadow-sm p-5">
-                        <div class="flex items-center justify-between mb-2">
-                            <div class="flex items-center gap-3">
-                                <span class="w-9 h-9 shrink-0 rounded-lg {{ $summary['profit'] >= 0 ? 'bg-[#EAF3EE] text-[#2F6F4E]' : 'bg-[#FBEAE6] text-[#B5482E]' }} flex items-center justify-center">
-                                    <svg class="w-4.5 h-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-                                    </svg>
-                                </span>
-                                <p class="text-xs text-[#8A8272]">Profit Kotor</p>
-                            </div>
-                            <span class="text-[10px] font-medium px-1.5 py-0.5 rounded {{ $summary['profit'] >= 0 ? 'bg-[#EAF3EE] text-[#2F6F4E]' : 'bg-[#FBEAE6] text-[#B5482E]' }}">{{ $summary['margin'] }}% margin</span>
-                        </div>
-                        <p class="text-xl font-semibold {{ $summary['profit'] >= 0 ? 'text-[#2F6F4E]' : 'text-[#B5482E]' }}">
-                            Rp {{ number_format($summary['profit'], 0, ',', '.') }}
-                        </p>
-                    </div>
-                    <div class="bg-white rounded-xl ring-1 ring-[#E7E1D3] shadow-sm p-5">
-                        <div class="flex items-center gap-3 mb-2">
-                            <span class="w-9 h-9 shrink-0 rounded-lg bg-[#FBEAE6] text-[#B5482E] flex items-center justify-center">
-                                <svg class="w-4.5 h-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-6a2 2 0 012-2h2a2 2 0 012 2v6m4 0V7a2 2 0 00-2-2H9a2 2 0 00-2 2v10a2 2 0 002 2h6a2 2 0 002-2z" />
-                                </svg>
-                            </span>
-                            <p class="text-xs text-[#8A8272]">Transaksi Lunas</p>
-                        </div>
-                        <p class="text-xl font-semibold text-[#1F2A24]">{{ $summary['jumlah_lunas'] }}</p>
-                        <p class="text-xs text-[#8A8272] mt-1">
-                            Rata-rata Rp {{ number_format($summary['rata_rata_transaksi'], 0, ',', '.') }}/transaksi
-                            &middot; {{ $summary['jumlah_piutang'] }} transaksi piutang
-                        </p>
-                    </div>
+            <!-- ==================== TABS DETAIL ==================== -->
+            <div id="report-tabs" class="bg-white rounded-xl ring-1 ring-[#E7E1D3] shadow-sm overflow-hidden">
+                <div class="flex overflow-x-auto border-b border-[#E7E1D3]" style="scrollbar-width:none">
+                    <button type="button" @click="tab = 'harian'"
+                            class="shrink-0 px-4 sm:px-5 py-3 text-sm font-medium border-b-2 transition"
+                            :class="tab === 'harian' ? 'border-[#D4A73C] text-[#1F2A24]' : 'border-transparent text-[#8A8272] hover:text-[#1F2A24]'">
+                        Rekap Harian
+                    </button>
+                    <button type="button" @click="tab = 'produk'"
+                            class="shrink-0 px-4 sm:px-5 py-3 text-sm font-medium border-b-2 transition"
+                            :class="tab === 'produk' ? 'border-[#D4A73C] text-[#1F2A24]' : 'border-transparent text-[#8A8272] hover:text-[#1F2A24]'">
+                        Produk Terlaris
+                    </button>
+                    <button type="button" @click="tab = 'metode'"
+                            class="shrink-0 px-4 sm:px-5 py-3 text-sm font-medium border-b-2 transition"
+                            :class="tab === 'metode' ? 'border-[#D4A73C] text-[#1F2A24]' : 'border-transparent text-[#8A8272] hover:text-[#1F2A24]'">
+                        Metode &amp; Status
+                    </button>
+                    <button type="button" @click="tab = 'piutang'" id="piutang-tab"
+                            class="shrink-0 px-4 sm:px-5 py-3 text-sm font-medium border-b-2 transition"
+                            :class="tab === 'piutang' ? 'border-[#D4A73C] text-[#1F2A24]' : 'border-transparent text-[#8A8272] hover:text-[#1F2A24]'">
+                        Piutang
+                    </button>
+                    <button type="button" @click="tab = 'pengeluaran'"
+                            class="shrink-0 px-4 sm:px-5 py-3 text-sm font-medium border-b-2 transition"
+                            :class="tab === 'pengeluaran' ? 'border-[#D4A73C] text-[#1F2A24]' : 'border-transparent text-[#8A8272] hover:text-[#1F2A24]'">
+                        Pengeluaran
+                    </button>
                 </div>
 
-                <!-- Kartu ringkasan: Piutang & Kas -->
-                <div class="grid grid-cols-2 xl:grid-cols-4 gap-4">
-                    <div class="bg-white rounded-xl ring-1 ring-[#E7E1D3] shadow-sm p-5">
-                        <div class="flex items-center gap-3 mb-2">
-                            <span class="w-9 h-9 shrink-0 rounded-lg bg-[#FBEAE6] text-[#B5482E] flex items-center justify-center">
-                                <svg class="w-4.5 h-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M5.07 19h13.86c1.54 0 2.5-1.67 1.73-3L13.73 4c-.77-1.33-2.69-1.33-3.46 0L3.34 16c-.77 1.33.19 3 1.73 3z" />
-                                </svg>
-                            </span>
-                            <p class="text-xs text-[#8A8272]">Piutang Baru (periode ini)</p>
-                        </div>
-                        <p class="text-xl font-semibold text-[#B5482E]">Rp {{ number_format($summary['piutang_nilai'], 0, ',', '.') }}</p>
-                        <p class="text-xs text-[#8A8272] mt-1">Belum masuk omzet</p>
-                    </div>
-                    <div class="bg-white rounded-xl ring-1 ring-[#E7E1D3] shadow-sm p-5">
-                        <div class="flex items-center gap-3 mb-2">
-                            <span class="w-9 h-9 shrink-0 rounded-lg bg-[#EAF3EE] text-[#2F6F4E] flex items-center justify-center">
-                                <svg class="w-4.5 h-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                </svg>
-                            </span>
-                            <p class="text-xs text-[#8A8272]">Sudah Dicicil (dari piutang baru)</p>
-                        </div>
-                        <p class="text-xl font-semibold text-[#1F2A24]">Rp {{ number_format($summary['piutang_sudah_dibayar'], 0, ',', '.') }}</p>
-                        @php
-                            $piutangProgress = $summary['piutang_nilai'] > 0
-                                ? min(100, round(($summary['piutang_sudah_dibayar'] / $summary['piutang_nilai']) * 100))
-                                : 0;
-                        @endphp
-                        <div class="h-1.5 rounded-full bg-[#F6F3EC] overflow-hidden mt-2">
-                            <div class="h-full bg-[#2F6F4E] rounded-full" style="width: {{ $piutangProgress }}%"></div>
-                        </div>
-                    </div>
-                    <div class="bg-white rounded-xl ring-1 ring-[#E7E1D3] shadow-sm p-5">
-                        <div class="flex items-center gap-3 mb-2">
-                            <span class="w-9 h-9 shrink-0 rounded-lg bg-[#FBEAE6] text-[#B5482E] flex items-center justify-center">
-                                <svg class="w-4.5 h-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a4 4 0 00-3-3.87M9 20H4v-2a4 4 0 013-3.87m5-4a4 4 0 100-8 4 4 0 000 8zm6 8v-2a4 4 0 00-4-4h-4a4 4 0 00-4 4v2" />
-                                </svg>
-                            </span>
-                            <p class="text-xs text-[#8A8272]">Sisa Piutang Belum Tertagih</p>
-                        </div>
-                        <p class="text-xl font-semibold text-[#B5482E]">Rp {{ number_format($summary['piutang_sisa'], 0, ',', '.') }}</p>
-                    </div>
-                    <div class="bg-white rounded-xl ring-1 ring-[#E7E1D3] shadow-sm p-5">
-                        <div class="flex items-center gap-3 mb-2">
-                            <span class="w-9 h-9 shrink-0 rounded-lg bg-[#EAF3EE] text-[#2F6F4E] flex items-center justify-center">
-                                <svg class="w-4.5 h-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12V7H5a2 2 0 010-4h14v4M3 5v14a2 2 0 002 2h16v-5M18 12a2 2 0 000 4h4v-4h-4z" />
-                                </svg>
-                            </span>
-                            <p class="text-xs text-[#8A8272]">Kas Masuk (periode ini)</p>
-                        </div>
-                        <p class="text-xl font-semibold text-[#2F6F4E]">Rp {{ number_format($summary['kas_masuk'], 0, ',', '.') }}</p>
-                        <p class="text-xs text-[#8A8272] mt-1">Termasuk cicilan piutang lama</p>
-                    </div>
-                </div>
+                <!-- ===== TAB: REKAP HARIAN ===== -->
+                <div x-show="tab === 'harian'" x-cloak class="p-4 sm:p-5">
+                    @php $maxOmzetHarian = $dailyRecap->max('omzet') ?: 1; @endphp
 
-                <!-- Rincian penjualan gaya struk -->
-                <div class="bg-white rounded-xl ring-1 ring-[#E7E1D3] shadow-sm p-5">
-                    <h3 class="text-sm font-medium text-[#8A8272] mb-4">Rincian Penjualan (Lunas)</h3>
-                    <div class="max-w-md font-mono text-sm space-y-2.5">
-                        <div class="flex flex-col sm:flex-row sm:items-baseline gap-0.5 sm:gap-2">
-                            <span class="text-[#6B6456] shrink-0">Subtotal Penjualan</span>
-                            <span class="hidden sm:block flex-1 border-b border-dotted border-[#D8D2C2] translate-y-[-3px]"></span>
-                            <span class="text-[#1F2A24] sm:text-right">Rp {{ number_format($summary['subtotal'], 0, ',', '.') }}</span>
+                    @if ($dailyRecap->isEmpty())
+                        <p class="text-sm text-[#8A8272] py-8 text-center">Belum ada data pada periode ini.</p>
+                    @else
+                        {{-- Tabel: sm ke atas --}}
+                        <div class="hidden sm:block overflow-x-auto -mx-5 px-5">
+                            <table class="min-w-full text-sm">
+                                <thead>
+                                    <tr class="text-left text-[#8A8272] text-xs uppercase tracking-wide">
+                                        <th class="pb-2 font-medium">Tanggal</th>
+                                        <th class="pb-2 font-medium text-right">Transaksi</th>
+                                        <th class="pb-2 font-medium">Omzet</th>
+                                        <th class="pb-2 font-medium text-right">Modal</th>
+                                        <th class="pb-2 font-medium text-right">Profit</th>
+                                        <th class="pb-2 font-medium text-right">Margin</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-[#EFEAE0]">
+                                    @foreach ($dailyRecap as $row)
+                                        <tr>
+                                            <td class="py-2.5 text-[#1F2A24] whitespace-nowrap">
+                                                {{ $row['tanggal']->translatedFormat('d M') }}
+                                                <span class="block text-[11px] text-[#8A8272]">
+                                                    {{ $row['jumlah_lunas'] }} lunas
+                                                    @if ($row['jumlah_piutang'] > 0)
+                                                        &middot; {{ $row['jumlah_piutang'] }} piutang
+                                                    @endif
+                                                </span>
+                                            </td>
+                                            <td class="py-2.5 text-right text-[#8A8272]">{{ $row['jumlah_transaksi'] }}</td>
+                                            <td class="py-2.5">
+                                                <div class="flex items-center gap-2 min-w-[160px]">
+                                                    <div class="h-1.5 flex-1 rounded-full bg-[#F0ECE0] overflow-hidden">
+                                                        <div class="h-full rounded-full bg-[#D4A73C]" style="width: {{ round(($row['omzet'] / $maxOmzetHarian) * 100) }}%"></div>
+                                                    </div>
+                                                    <span class="text-[#1F2A24] font-medium whitespace-nowrap">Rp {{ number_format($row['omzet'], 0, ',', '.') }}</span>
+                                                </div>
+                                            </td>
+                                            <td class="py-2.5 text-right text-[#8A8272] whitespace-nowrap">Rp {{ number_format($row['modal'], 0, ',', '.') }}</td>
+                                            <td class="py-2.5 text-right font-medium whitespace-nowrap {{ $row['profit'] >= 0 ? 'text-[#2F6F4E]' : 'text-[#B5482E]' }}">
+                                                Rp {{ number_format($row['profit'], 0, ',', '.') }}
+                                            </td>
+                                            <td class="py-2.5 text-right text-[#8A8272]">{{ $row['margin'] }}%</td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
                         </div>
-                        <div class="flex flex-col sm:flex-row sm:items-baseline gap-0.5 sm:gap-2">
-                            <span class="text-[#6B6456] shrink-0">Total Diskon</span>
-                            <span class="hidden sm:block flex-1 border-b border-dotted border-[#D8D2C2] translate-y-[-3px]"></span>
-                            <span class="text-[#B5482E] sm:text-right">&minus; Rp {{ number_format($summary['diskon'], 0, ',', '.') }}</span>
-                        </div>
-                        <div class="flex flex-col sm:flex-row sm:items-baseline gap-0.5 sm:gap-2">
-                            <span class="text-[#6B6456] shrink-0">Total Pajak</span>
-                            <span class="hidden sm:block flex-1 border-b border-dotted border-[#D8D2C2] translate-y-[-3px]"></span>
-                            <span class="text-[#1F2A24] sm:text-right">+ Rp {{ number_format($summary['pajak'], 0, ',', '.') }}</span>
-                        </div>
-                        <div class="flex flex-col sm:flex-row sm:items-baseline gap-0.5 sm:gap-2">
-                            <span class="text-[#6B6456] shrink-0">Biaya Tambahan</span>
-                            <span class="hidden sm:block flex-1 border-b border-dotted border-[#D8D2C2] translate-y-[-3px]"></span>
-                            <span class="text-[#1F2A24] sm:text-right">+ Rp {{ number_format($summary['biaya_tambahan'], 0, ',', '.') }}</span>
-                        </div>
-                        <div class="flex flex-col sm:flex-row sm:items-baseline gap-0.5 sm:gap-2 pt-2 border-t border-[#EFEAE0] font-semibold">
-                            <span class="text-[#1F2A24] shrink-0">Omzet (Lunas)</span>
-                            <span class="hidden sm:block flex-1 border-b border-dotted border-[#D8D2C2] translate-y-[-3px]"></span>
-                            <span class="text-[#1F2A24] sm:text-right">Rp {{ number_format($summary['omzet'], 0, ',', '.') }}</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
 
-            <!-- Grafik tren -->
-            <div id="grafik" class="scroll-mt-6 bg-white rounded-xl ring-1 ring-[#E7E1D3] shadow-sm p-5">
-                <h3 class="text-sm font-medium text-[#8A8272] mb-4">Tren Omzet, Modal, Profit & Piutang Baru</h3>
-                <div class="h-72">
-                    <canvas id="reportTrendChart"></canvas>
-                </div>
-            </div>
-
-            <!-- Breakdown metode pembayaran & status -->
-            <div id="pembayaran" class="scroll-mt-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div class="bg-white rounded-xl ring-1 ring-[#E7E1D3] shadow-sm p-5">
-                    <h3 class="text-sm font-medium text-[#8A8272] mb-3">Metode Pembayaran (Lunas)</h3>
-                    @php $totalPaymentOmzet = collect($paymentRecap)->sum('omzet'); @endphp
-                    @forelse ($paymentRecap as $row)
-                        @php $payPercent = $totalPaymentOmzet > 0 ? round(($row->omzet / $totalPaymentOmzet) * 100) : 0; @endphp
-                        <div class="py-2.5 border-b border-[#EFEAE0] last:border-0">
-                            <div class="flex items-center justify-between mb-1.5">
-                                <p class="text-sm text-[#1F2A24] capitalize">{{ $row->payment_method }}</p>
-                                <div class="text-right">
-                                    <p class="text-sm font-medium text-[#1F2A24]">Rp {{ number_format($row->omzet, 0, ',', '.') }}</p>
-                                    <p class="text-xs text-[#8A8272]">{{ $row->jumlah }} transaksi &middot; {{ $payPercent }}%</p>
+                        {{-- Card list: HP --}}
+                        <div class="sm:hidden divide-y divide-[#EFEAE0]">
+                            @foreach ($dailyRecap as $row)
+                                <div class="py-3">
+                                    <div class="flex items-center justify-between gap-2 mb-1.5">
+                                        <p class="text-sm font-medium text-[#1F2A24]">{{ $row['tanggal']->translatedFormat('d M Y') }}</p>
+                                        <p class="text-sm font-semibold text-[#1F2A24]">Rp {{ number_format($row['omzet'], 0, ',', '.') }}</p>
+                                    </div>
+                                    <div class="h-1.5 rounded-full bg-[#F0ECE0] overflow-hidden mb-2">
+                                        <div class="h-full rounded-full bg-[#D4A73C]" style="width: {{ round(($row['omzet'] / $maxOmzetHarian) * 100) }}%"></div>
+                                    </div>
+                                    <div class="flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-[#8A8272]">
+                                        <span>{{ $row['jumlah_lunas'] }} lunas @if($row['jumlah_piutang'] > 0) &middot; {{ $row['jumlah_piutang'] }} piutang @endif</span>
+                                        <span>Modal Rp {{ number_format($row['modal'], 0, ',', '.') }}</span>
+                                        <span class="{{ $row['profit'] >= 0 ? 'text-[#2F6F4E]' : 'text-[#B5482E]' }}">Profit Rp {{ number_format($row['profit'], 0, ',', '.') }} ({{ $row['margin'] }}%)</span>
+                                    </div>
                                 </div>
-                            </div>
-                            <div class="h-1.5 rounded-full bg-[#F6F3EC] overflow-hidden">
-                                <div class="h-full bg-[#D4A73C] rounded-full" style="width: {{ $payPercent }}%"></div>
-                            </div>
+                            @endforeach
                         </div>
-                    @empty
-                        <p class="text-sm text-[#8A8272] py-6 text-center">Belum ada data pada periode ini</p>
-                    @endforelse
+                    @endif
                 </div>
 
-                <div class="bg-white rounded-xl ring-1 ring-[#E7E1D3] shadow-sm p-5">
-                    <h3 class="text-sm font-medium text-[#8A8272] mb-3">Status Transaksi</h3>
-                    @php
-                        $totalStatusNilai = collect($statusRecap)->sum('nilai');
-                        $statusColor = [
-                            'lunas' => '#2F6F4E',
-                            'piutang' => '#B5482E',
-                            'batal' => '#8A8272',
-                        ];
-                    @endphp
-                    @forelse ($statusRecap as $row)
-                        @php
-                            $statusPercent = $totalStatusNilai > 0 ? round(($row->nilai / $totalStatusNilai) * 100) : 0;
-                            $barColor = $statusColor[$row->status] ?? '#8A8272';
-                        @endphp
-                        <div class="py-2.5 border-b border-[#EFEAE0] last:border-0">
-                            <div class="flex items-center justify-between mb-1.5">
-                                <p class="text-sm text-[#1F2A24] capitalize">{{ $row->status }}</p>
-                                <div class="text-right">
-                                    <p class="text-sm font-medium text-[#1F2A24]">Rp {{ number_format($row->nilai, 0, ',', '.') }}</p>
-                                    <p class="text-xs text-[#8A8272]">{{ $row->jumlah }} transaksi &middot; {{ $statusPercent }}%</p>
+                <!-- ===== TAB: PRODUK TERLARIS ===== -->
+                <div x-show="tab === 'produk'" x-cloak class="p-4 sm:p-5">
+                    @if ($productRecap->isEmpty())
+                        <p class="text-sm text-[#8A8272] py-8 text-center">Belum ada produk terjual pada periode ini.</p>
+                    @else
+                        @php $maxOmzetProduk = $productRecap->max('omzet') ?: 1; @endphp
+
+                        <div class="hidden sm:block overflow-x-auto -mx-5 px-5">
+                            <table class="min-w-full text-sm">
+                                <thead>
+                                    <tr class="text-left text-[#8A8272] text-xs uppercase tracking-wide">
+                                        <th class="pb-2 font-medium w-8">#</th>
+                                        <th class="pb-2 font-medium">Produk</th>
+                                        <th class="pb-2 font-medium text-right">Qty</th>
+                                        <th class="pb-2 font-medium">Omzet</th>
+                                        <th class="pb-2 font-medium text-right">Profit</th>
+                                        <th class="pb-2 font-medium text-right">Margin</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-[#EFEAE0]">
+                                    @foreach ($productRecap as $i => $row)
+                                        <tr>
+                                            <td class="py-2.5 text-[#B0A98F]">{{ $i + 1 }}</td>
+                                            <td class="py-2.5 text-[#1F2A24] font-medium whitespace-nowrap">{{ $row['name'] }}</td>
+                                            <td class="py-2.5 text-right text-[#8A8272]">{{ $row['qty'] }}</td>
+                                            <td class="py-2.5">
+                                                <div class="flex items-center gap-2 min-w-[160px]">
+                                                    <div class="h-1.5 flex-1 rounded-full bg-[#F0ECE0] overflow-hidden">
+                                                        <div class="h-full rounded-full bg-[#D4A73C]" style="width: {{ round(($row['omzet'] / $maxOmzetProduk) * 100) }}%"></div>
+                                                    </div>
+                                                    <span class="text-[#1F2A24] whitespace-nowrap">Rp {{ number_format($row['omzet'], 0, ',', '.') }}</span>
+                                                </div>
+                                            </td>
+                                            <td class="py-2.5 text-right whitespace-nowrap {{ $row['profit'] >= 0 ? 'text-[#2F6F4E]' : 'text-[#B5482E]' }}">
+                                                Rp {{ number_format($row['profit'], 0, ',', '.') }}
+                                            </td>
+                                            <td class="py-2.5 text-right text-[#8A8272]">{{ $row['margin'] }}%</td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div class="sm:hidden divide-y divide-[#EFEAE0]">
+                            @foreach ($productRecap as $i => $row)
+                                <div class="py-3">
+                                    <div class="flex items-start justify-between gap-2">
+                                        <p class="text-sm font-medium text-[#1F2A24]"><span class="text-[#B0A98F] mr-1">{{ $i + 1 }}.</span>{{ $row['name'] }}</p>
+                                        <p class="text-sm font-semibold text-[#1F2A24] shrink-0">Rp {{ number_format($row['omzet'], 0, ',', '.') }}</p>
+                                    </div>
+                                    <div class="h-1.5 rounded-full bg-[#F0ECE0] overflow-hidden my-2">
+                                        <div class="h-full rounded-full bg-[#D4A73C]" style="width: {{ round(($row['omzet'] / $maxOmzetProduk) * 100) }}%"></div>
+                                    </div>
+                                    <div class="flex flex-wrap gap-x-3 text-xs text-[#8A8272]">
+                                        <span>{{ $row['qty'] }} terjual</span>
+                                        <span class="{{ $row['profit'] >= 0 ? 'text-[#2F6F4E]' : 'text-[#B5482E]' }}">Profit Rp {{ number_format($row['profit'], 0, ',', '.') }} ({{ $row['margin'] }}%)</span>
+                                    </div>
                                 </div>
-                            </div>
-                            <div class="h-1.5 rounded-full bg-[#F6F3EC] overflow-hidden">
-                                <div class="h-full rounded-full" style="width: {{ $statusPercent }}%; background-color: {{ $barColor }}"></div>
-                            </div>
+                            @endforeach
                         </div>
-                    @empty
-                        <p class="text-sm text-[#8A8272] py-6 text-center">Belum ada data pada periode ini</p>
-                    @endforelse
+                    @endif
                 </div>
-            </div>
 
-            <!-- Kontribusi produk -->
-            <div id="produk" class="scroll-mt-6 bg-white rounded-xl ring-1 ring-[#E7E1D3] shadow-sm p-5 overflow-x-auto">
-                <h3 class="text-sm font-medium text-[#8A8272] mb-3">Kontribusi Produk &mdash; Top 15 (Lunas)</h3>
-                <table class="w-full min-w-[760px] text-sm">
-                    <thead>
-                        <tr class="text-left text-xs text-[#8A8272] border-b border-[#EFEAE0]">
-                            <th class="py-2 pr-3 font-medium w-8">#</th>
-                            <th class="py-2 pr-3 font-medium">Produk</th>
-                            <th class="py-2 pr-3 font-medium text-right">Qty Terjual</th>
-                            <th class="py-2 pr-3 font-medium text-right">Modal</th>
-                            <th class="py-2 pr-3 font-medium text-right">Omzet</th>
-                            <th class="py-2 pr-3 font-medium text-right">Profit</th>
-                            <th class="py-2 font-medium text-right">Margin</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @forelse ($productRecap as $p)
+                <!-- ===== TAB: METODE & STATUS ===== -->
+                <div x-show="tab === 'metode'" x-cloak class="p-4 sm:p-5 space-y-6">
+                    <div>
+                        <p class="text-xs font-medium text-[#8A8272] uppercase tracking-wide mb-3">Metode Pembayaran (transaksi lunas)</p>
+                        @if ($paymentRecap->isEmpty())
+                            <p class="text-sm text-[#8A8272] py-4 text-center">Belum ada data.</p>
+                        @else
                             @php
-                                $rankStyle = match (true) {
-                                    $loop->index === 0 => 'bg-[#FBF0DA] text-[#B5842A]',
-                                    $loop->index === 1 => 'bg-[#F2F0EC] text-[#6B6456]',
-                                    $loop->index === 2 => 'bg-[#F5E3D3] text-[#9C5B2E]',
-                                    default => 'bg-transparent text-[#8A8272]',
+                                $methodLabel = fn ($m) => match ($m) {
+                                    'tunai' => 'Tunai', 'transfer' => 'Transfer Bank', 'qris' => 'QRIS', default => 'Lainnya',
                                 };
+                                $maxOmzetMetode = $paymentRecap->max('omzet') ?: 1;
                             @endphp
-                            <tr class="border-b border-[#EFEAE0] last:border-0 hover:bg-[#FAF8F3]">
-                                <td class="py-2 pr-3">
-                                    <span class="inline-flex w-5 h-5 items-center justify-center rounded-full text-[11px] font-semibold {{ $rankStyle }}">{{ $loop->iteration }}</span>
-                                </td>
-                                <td class="py-2 pr-3 text-[#1F2A24]">{{ $p['name'] }}</td>
-                                <td class="py-2 pr-3 text-right text-[#1F2A24]">{{ $p['qty'] }}</td>
-                                <td class="py-2 pr-3 text-right text-[#8A8272]">Rp {{ number_format($p['modal'], 0, ',', '.') }}</td>
-                                <td class="py-2 pr-3 text-right text-[#1F2A24]">Rp {{ number_format($p['omzet'], 0, ',', '.') }}</td>
-                                <td class="py-2 pr-3 text-right {{ $p['profit'] >= 0 ? 'text-[#2F6F4E]' : 'text-[#B5482E]' }}">Rp {{ number_format($p['profit'], 0, ',', '.') }}</td>
-                                <td class="py-2 text-right text-[#8A8272]">{{ $p['margin'] }}%</td>
-                            </tr>
-                        @empty
-                            <tr>
-                                <td colspan="7" class="py-8 text-center text-[#8A8272]">Belum ada penjualan lunas pada periode ini</td>
-                            </tr>
-                        @endforelse
-                    </tbody>
-                    @if (collect($productRecap)->isNotEmpty())
-                        <tfoot>
-                            <tr class="border-t-2 border-[#E7E1D3] font-semibold text-[#1F2A24]">
-                                <td class="py-2 pr-3"></td>
-                                <td class="py-2 pr-3">Total</td>
-                                <td class="py-2 pr-3 text-right">{{ collect($productRecap)->sum('qty') }}</td>
-                                <td class="py-2 pr-3 text-right text-[#8A8272]">Rp {{ number_format(collect($productRecap)->sum('modal'), 0, ',', '.') }}</td>
-                                <td class="py-2 pr-3 text-right">Rp {{ number_format(collect($productRecap)->sum('omzet'), 0, ',', '.') }}</td>
-                                <td class="py-2 pr-3 text-right {{ collect($productRecap)->sum('profit') >= 0 ? 'text-[#2F6F4E]' : 'text-[#B5482E]' }}">Rp {{ number_format(collect($productRecap)->sum('profit'), 0, ',', '.') }}</td>
-                                <td class="py-2 text-right"></td>
-                            </tr>
-                        </tfoot>
+                            <div class="space-y-2.5">
+                                @foreach ($paymentRecap as $row)
+                                    <div class="flex items-center gap-3">
+                                        <span class="w-24 sm:w-28 shrink-0 text-sm text-[#1F2A24]">{{ $methodLabel($row->payment_method) }}</span>
+                                        <div class="h-2 flex-1 rounded-full bg-[#F0ECE0] overflow-hidden">
+                                            <div class="h-full rounded-full bg-[#1F2A24]" style="width: {{ round(($row->omzet / $maxOmzetMetode) * 100) }}%"></div>
+                                        </div>
+                                        <span class="w-28 sm:w-36 shrink-0 text-right text-sm font-medium text-[#1F2A24] whitespace-nowrap">Rp {{ number_format($row->omzet, 0, ',', '.') }}</span>
+                                        <span class="w-16 shrink-0 text-right text-xs text-[#8A8272]">{{ $row->jumlah }}x</span>
+                                    </div>
+                                @endforeach
+                            </div>
+                        @endif
+                    </div>
+
+                    <div class="pt-4 border-t border-dashed border-[#E7E1D3]">
+                        <p class="text-xs font-medium text-[#8A8272] uppercase tracking-wide mb-3">Status Transaksi</p>
+                        @if ($statusRecap->isEmpty())
+                            <p class="text-sm text-[#8A8272] py-4 text-center">Belum ada data.</p>
+                        @else
+                            <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                                @foreach ($statusRecap as $row)
+                                    @php
+                                        $sBadge = match ($row->status) {
+                                            'lunas' => ['bg-[#EAF3EE]', 'text-[#2F6F4E]'],
+                                            'piutang' => ['bg-[#FBF0DA]', 'text-[#B5842A]'],
+                                            default => ['bg-[#F6F3EC]', 'text-[#8A8272]'],
+                                        };
+                                    @endphp
+                                    <div class="rounded-lg {{ $sBadge[0] }} px-3.5 py-3">
+                                        <p class="text-xs font-medium {{ $sBadge[1] }} uppercase tracking-wide">{{ ucfirst($row->status) }}</p>
+                                        <p class="text-base font-semibold {{ $sBadge[1] }} mt-0.5">{{ $row->jumlah }}<span class="text-xs font-normal"> transaksi</span></p>
+                                        <p class="text-xs {{ $sBadge[1] }}/80 mt-0.5">Rp {{ number_format($row->nilai, 0, ',', '.') }}</p>
+                                    </div>
+                                @endforeach
+                            </div>
+                        @endif
+                    </div>
+                </div>
+
+                <!-- ===== TAB: PIUTANG ===== -->
+                <div x-show="tab === 'piutang'" x-cloak class="p-4 sm:p-5">
+                    @if ($piutangRecap->isEmpty())
+                        <p class="text-sm text-[#8A8272] py-8 text-center">Tidak ada piutang pada periode ini.</p>
+                    @else
+                        <div class="hidden sm:block overflow-x-auto -mx-5 px-5">
+                            <table class="min-w-full text-sm">
+                                <thead>
+                                    <tr class="text-left text-[#8A8272] text-xs uppercase tracking-wide">
+                                        <th class="pb-2 font-medium">Invoice</th>
+                                        <th class="pb-2 font-medium">Customer</th>
+                                        <th class="pb-2 font-medium">Tanggal</th>
+                                        <th class="pb-2 font-medium text-right">Total</th>
+                                        <th class="pb-2 font-medium text-right">Dibayar</th>
+                                        <th class="pb-2 font-medium text-right">Sisa</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-[#EFEAE0]">
+                                    @foreach ($piutangRecap as $row)
+                                        <tr>
+                                            <td class="py-2.5 font-mono text-[#1F2A24] whitespace-nowrap">{{ $row['invoice'] }}</td>
+                                            <td class="py-2.5 text-[#1F2A24]">{{ $row['customer'] }}</td>
+                                            <td class="py-2.5 text-[#8A8272] whitespace-nowrap">{{ $row['tanggal']->format('d/m/Y') }}</td>
+                                            <td class="py-2.5 text-right text-[#8A8272] whitespace-nowrap">Rp {{ number_format($row['total'], 0, ',', '.') }}</td>
+                                            <td class="py-2.5 text-right text-[#2F6F4E] whitespace-nowrap">Rp {{ number_format($row['dibayar'], 0, ',', '.') }}</td>
+                                            <td class="py-2.5 text-right font-medium text-[#B5482E] whitespace-nowrap">Rp {{ number_format($row['sisa'], 0, ',', '.') }}</td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div class="sm:hidden divide-y divide-[#EFEAE0]">
+                            @foreach ($piutangRecap as $row)
+                                <div class="py-3">
+                                    <div class="flex items-start justify-between gap-2">
+                                        <div class="min-w-0">
+                                            <p class="font-mono text-sm text-[#1F2A24] truncate">{{ $row['invoice'] }}</p>
+                                            <p class="text-xs text-[#8A8272]">{{ $row['customer'] }} &middot; {{ $row['tanggal']->format('d/m/Y') }}</p>
+                                        </div>
+                                        <p class="text-sm font-semibold text-[#B5482E] shrink-0">Rp {{ number_format($row['sisa'], 0, ',', '.') }}</p>
+                                    </div>
+                                    <p class="text-xs text-[#8A8272] mt-1">Total Rp {{ number_format($row['total'], 0, ',', '.') }} &middot; Dibayar Rp {{ number_format($row['dibayar'], 0, ',', '.') }}</p>
+                                </div>
+                            @endforeach
+                        </div>
                     @endif
-                </table>
+                </div>
+
+                <!-- ===== TAB: PENGELUARAN ===== -->
+                <div x-show="tab === 'pengeluaran'" x-cloak class="p-4 sm:p-5">
+                    @if ($expenseRecap->isEmpty())
+                        <p class="text-sm text-[#8A8272] py-8 text-center">Tidak ada pengeluaran pada periode ini.</p>
+                    @else
+                        @php $maxTotalExpense = $expenseRecap->max('total') ?: 1; @endphp
+                        <div class="space-y-2.5">
+                            @foreach ($expenseRecap as $row)
+                                <div class="flex items-center gap-3">
+                                    <span class="w-32 sm:w-44 shrink-0 text-sm text-[#1F2A24] truncate">{{ $row['category'] }}</span>
+                                    <div class="h-2 flex-1 rounded-full bg-[#F0ECE0] overflow-hidden">
+                                        <div class="h-full rounded-full bg-[#B5482E]" style="width: {{ round(($row['total'] / $maxTotalExpense) * 100) }}%"></div>
+                                    </div>
+                                    <span class="w-28 sm:w-36 shrink-0 text-right text-sm font-medium text-[#1F2A24] whitespace-nowrap">Rp {{ number_format($row['total'], 0, ',', '.') }}</span>
+                                    <span class="w-16 shrink-0 text-right text-xs text-[#8A8272]">{{ $row['jumlah'] }}x</span>
+                                </div>
+                            @endforeach
+                        </div>
+                        <p class="text-xs text-[#8A8272] mt-4 pt-4 border-t border-dashed border-[#E7E1D3]">
+                            Mau catat pengeluaran baru? Buka menu <a href="{{ route('expenses.index') }}" class="text-[#1B6E6E] hover:underline">Pengeluaran</a>.
+                        </p>
+                    @endif
+                </div>
             </div>
 
-            <!-- Rekap harian -->
-            <div id="harian" class="scroll-mt-6 bg-white rounded-xl ring-1 ring-[#E7E1D3] shadow-sm p-5 overflow-x-auto">
-                <h3 class="text-sm font-medium text-[#8A8272] mb-3">Rekap Harian</h3>
-                <table class="w-full min-w-[860px] text-sm">
-                    <thead>
-                        <tr class="text-left text-xs text-[#8A8272] border-b border-[#EFEAE0]">
-                            <th class="py-2 pr-3 font-medium">Tanggal</th>
-                            <th class="py-2 pr-3 font-medium text-right">Lunas</th>
-                            <th class="py-2 pr-3 font-medium text-right">Piutang</th>
-                            <th class="py-2 pr-3 font-medium text-right">Modal</th>
-                            <th class="py-2 pr-3 font-medium text-right">Omzet</th>
-                            <th class="py-2 pr-3 font-medium text-right">Profit</th>
-                            <th class="py-2 pr-3 font-medium text-right">Margin</th>
-                            <th class="py-2 font-medium text-right">Piutang Baru</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @forelse ($dailyRecap as $row)
-                            <tr class="border-b border-[#EFEAE0] last:border-0 hover:bg-[#FAF8F3]">
-                                <td class="py-2 pr-3 text-[#1F2A24]">{{ $row['tanggal']->translatedFormat('D, d M Y') }}</td>
-                                <td class="py-2 pr-3 text-right text-[#1F2A24]">{{ $row['jumlah_lunas'] }}</td>
-                                <td class="py-2 pr-3 text-right text-[#8A8272]">{{ $row['jumlah_piutang'] }}</td>
-                                <td class="py-2 pr-3 text-right text-[#8A8272]">Rp {{ number_format($row['modal'], 0, ',', '.') }}</td>
-                                <td class="py-2 pr-3 text-right text-[#1F2A24]">Rp {{ number_format($row['omzet'], 0, ',', '.') }}</td>
-                                <td class="py-2 pr-3 text-right {{ $row['profit'] >= 0 ? 'text-[#2F6F4E]' : 'text-[#B5482E]' }}">Rp {{ number_format($row['profit'], 0, ',', '.') }}</td>
-                                <td class="py-2 pr-3 text-right text-[#8A8272]">{{ $row['margin'] }}%</td>
-                                <td class="py-2 text-right text-[#B5482E]">Rp {{ number_format($row['piutang_baru'], 0, ',', '.') }}</td>
-                            </tr>
-                        @empty
-                            <tr>
-                                <td colspan="8" class="py-8 text-center text-[#8A8272]">Belum ada data pada periode ini</td>
-                            </tr>
-                        @endforelse
-                    </tbody>
-                    @if (collect($dailyRecap)->isNotEmpty())
-                        <tfoot>
-                            <tr class="border-t-2 border-[#E7E1D3] font-semibold text-[#1F2A24]">
-                                <td class="py-2 pr-3">Total</td>
-                                <td class="py-2 pr-3 text-right">{{ collect($dailyRecap)->sum('jumlah_lunas') }}</td>
-                                <td class="py-2 pr-3 text-right text-[#8A8272]">{{ collect($dailyRecap)->sum('jumlah_piutang') }}</td>
-                                <td class="py-2 pr-3 text-right text-[#8A8272]">Rp {{ number_format(collect($dailyRecap)->sum('modal'), 0, ',', '.') }}</td>
-                                <td class="py-2 pr-3 text-right">Rp {{ number_format(collect($dailyRecap)->sum('omzet'), 0, ',', '.') }}</td>
-                                <td class="py-2 pr-3 text-right {{ collect($dailyRecap)->sum('profit') >= 0 ? 'text-[#2F6F4E]' : 'text-[#B5482E]' }}">Rp {{ number_format(collect($dailyRecap)->sum('profit'), 0, ',', '.') }}</td>
-                                <td class="py-2 pr-3 text-right"></td>
-                                <td class="py-2 text-right text-[#B5482E]">Rp {{ number_format(collect($dailyRecap)->sum('piutang_baru'), 0, ',', '.') }}</td>
-                            </tr>
-                        </tfoot>
-                    @endif
-                </table>
-            </div>
+            <!-- ==================== UNDUH LAPORAN ==================== -->
+            @php
+                $exportQuery = ['period' => $period];
+                if ($period === 'custom') {
+                    $exportQuery['start'] = $start->format('Y-m-d');
+                    $exportQuery['end'] = $end->format('Y-m-d');
+                }
+            @endphp
+            <div class="bg-white rounded-xl ring-1 ring-[#E7E1D3] shadow-sm p-4 sm:p-5">
+                <p class="text-xs font-medium text-[#8A8272] uppercase tracking-wide mb-3">Unduh Laporan</p>
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div class="border border-[#E7E1D3] rounded-lg p-3.5">
+                        <p class="text-sm font-medium text-[#1F2A24] mb-0.5">Laporan Keuangan</p>
+                        <p class="text-xs text-[#8A8272] mb-3">Omzet, modal, profit sesuai periode terpilih.</p>
+                        <div class="flex gap-2">
+                            <a href="{{ route('reports.export.pdf', array_merge(['type' => 'keuangan'], $exportQuery)) }}"
+                               class="flex-1 text-center px-3 py-2 bg-white ring-1 ring-[#DDD5C2] text-[#1F2A24] text-xs font-medium rounded-lg hover:bg-[#F6F3EC] transition">PDF</a>
+                            <a href="{{ route('reports.export.excel', array_merge(['type' => 'keuangan'], $exportQuery)) }}"
+                               class="flex-1 text-center px-3 py-2 bg-[#1F2A24] text-white text-xs font-medium rounded-lg hover:bg-[#16201B] transition">Excel</a>
+                        </div>
+                    </div>
 
-            <!-- Detail piutang periode ini -->
-            <div id="piutang" class="scroll-mt-6 bg-white rounded-xl ring-1 ring-[#E7E1D3] shadow-sm p-5 overflow-x-auto">
-                <h3 class="text-sm font-medium text-[#8A8272] mb-3">Detail Piutang &mdash; Transaksi Belum Lunas (periode ini)</h3>
-                <table class="w-full min-w-[720px] text-sm">
-                    <thead>
-                        <tr class="text-left text-xs text-[#8A8272] border-b border-[#EFEAE0]">
-                            <th class="py-2 pr-3 font-medium">Tanggal</th>
-                            <th class="py-2 pr-3 font-medium">No Invoice</th>
-                            <th class="py-2 pr-3 font-medium">Pelanggan</th>
-                            <th class="py-2 pr-3 font-medium text-right">Total</th>
-                            <th class="py-2 pr-3 font-medium text-right">Sudah Dibayar</th>
-                            <th class="py-2 font-medium text-right">Sisa</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @forelse ($piutangRecap as $row)
-                            <tr class="border-b border-[#EFEAE0] last:border-0 hover:bg-[#FAF8F3]">
-                                <td class="py-2 pr-3 text-[#1F2A24]">{{ $row['tanggal']->translatedFormat('d M Y') }}</td>
-                                <td class="py-2 pr-3 text-[#8A8272]">{{ $row['invoice'] }}</td>
-                                <td class="py-2 pr-3 text-[#1F2A24]">{{ $row['customer'] }}</td>
-                                <td class="py-2 pr-3 text-right text-[#1F2A24]">Rp {{ number_format($row['total'], 0, ',', '.') }}</td>
-                                <td class="py-2 pr-3 text-right text-[#2F6F4E]">Rp {{ number_format($row['dibayar'], 0, ',', '.') }}</td>
-                                <td class="py-2 text-right text-[#B5482E]">Rp {{ number_format($row['sisa'], 0, ',', '.') }}</td>
-                            </tr>
-                        @empty
-                            <tr>
-                                <td colspan="6" class="py-8 text-center text-[#8A8272]">Tidak ada piutang pada periode ini</td>
-                            </tr>
-                        @endforelse
-                    </tbody>
-                    @if (collect($piutangRecap)->isNotEmpty())
-                        <tfoot>
-                            <tr class="border-t-2 border-[#E7E1D3] font-semibold">
-                                <td class="py-2 pr-3" colspan="3">Total</td>
-                                <td class="py-2 pr-3 text-right text-[#1F2A24]">Rp {{ number_format(collect($piutangRecap)->sum('total'), 0, ',', '.') }}</td>
-                                <td class="py-2 pr-3 text-right text-[#2F6F4E]">Rp {{ number_format(collect($piutangRecap)->sum('dibayar'), 0, ',', '.') }}</td>
-                                <td class="py-2 text-right text-[#B5482E]">Rp {{ number_format(collect($piutangRecap)->sum('sisa'), 0, ',', '.') }}</td>
-                            </tr>
-                        </tfoot>
-                    @endif
-                </table>
-            </div>
+                    <div class="border border-[#E7E1D3] rounded-lg p-3.5">
+                        <p class="text-sm font-medium text-[#1F2A24] mb-0.5">Laporan Stok</p>
+                        <p class="text-xs text-[#8A8272] mb-3">Stok &amp; nilai persediaan produk saat ini.</p>
+                        <div class="flex gap-2">
+                            <a href="{{ route('reports.export.pdf', ['type' => 'stok']) }}"
+                               class="flex-1 text-center px-3 py-2 bg-white ring-1 ring-[#DDD5C2] text-[#1F2A24] text-xs font-medium rounded-lg hover:bg-[#F6F3EC] transition">PDF</a>
+                            <a href="{{ route('reports.export.excel', ['type' => 'stok']) }}"
+                               class="flex-1 text-center px-3 py-2 bg-[#1F2A24] text-white text-xs font-medium rounded-lg hover:bg-[#16201B] transition">Excel</a>
+                        </div>
+                    </div>
 
+                    <div class="border border-[#E7E1D3] rounded-lg p-3.5">
+                        <p class="text-sm font-medium text-[#1F2A24] mb-0.5">Laporan Piutang</p>
+                        <p class="text-xs text-[#8A8272] mb-3">Daftar piutang aktif sesuai periode terpilih.</p>
+                        <div class="flex gap-2">
+                            <a href="{{ route('reports.export.pdf', array_merge(['type' => 'piutang'], $exportQuery)) }}"
+                               class="flex-1 text-center px-3 py-2 bg-white ring-1 ring-[#DDD5C2] text-[#1F2A24] text-xs font-medium rounded-lg hover:bg-[#F6F3EC] transition">PDF</a>
+                            <a href="{{ route('reports.export.excel', array_merge(['type' => 'piutang'], $exportQuery)) }}"
+                               class="flex-1 text-center px-3 py-2 bg-[#1F2A24] text-white text-xs font-medium rounded-lg hover:bg-[#16201B] transition">Excel</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
-
-    @php
-        $chartData = $dailyRecap->map(function ($r) {
-            return [
-                'label' => $r['tanggal']->translatedFormat('d M'),
-                'omzet' => $r['omzet'],
-                'modal' => $r['modal'],
-                'profit' => $r['profit'],
-                'piutang_baru' => $r['piutang_baru'],
-            ];
-        })->values();
-    @endphp
-
-@push('scripts')
-    <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            const dailyRecap = @json($chartData);
-
-            new Chart(document.getElementById('reportTrendChart'), {
-                data: {
-                    labels: dailyRecap.map(d => d.label),
-                    datasets: [
-                        {
-                            type: 'line',
-                            label: 'Omzet (Lunas)',
-                            data: dailyRecap.map(d => d.omzet),
-                            borderColor: '#D4A73C',
-                            backgroundColor: 'rgba(212,167,60,0.08)',
-                            borderWidth: 2,
-                            tension: 0.3,
-                            pointRadius: 2,
-                            pointHoverRadius: 4,
-                            fill: false,
-                        },
-                        {
-                            type: 'line',
-                            label: 'Modal',
-                            data: dailyRecap.map(d => d.modal),
-                            borderColor: '#B08D57',
-                            backgroundColor: 'rgba(176,141,87,0.08)',
-                            borderWidth: 2,
-                            borderDash: [5, 4],
-                            tension: 0.3,
-                            pointRadius: 2,
-                            pointHoverRadius: 4,
-                            fill: false,
-                        },
-                        {
-                            type: 'line',
-                            label: 'Profit',
-                            data: dailyRecap.map(d => d.profit),
-                            borderColor: '#2F6F4E',
-                            backgroundColor: 'rgba(47,111,78,0.12)',
-                            borderWidth: 2,
-                            tension: 0.3,
-                            pointRadius: 2,
-                            pointHoverRadius: 4,
-                            fill: true,
-                        },
-                        {
-                            type: 'bar',
-                            label: 'Piutang Baru',
-                            data: dailyRecap.map(d => d.piutang_baru),
-                            backgroundColor: 'rgba(181,72,46,0.35)',
-                            borderColor: '#B5482E',
-                            borderWidth: 1,
-                            order: 10,
-                        },
-                    ]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    interaction: { mode: 'index', intersect: false },
-                    plugins: {
-                        legend: { position: 'top' },
-                        tooltip: {
-                            callbacks: {
-                                label: (ctx) => `${ctx.dataset.label}: Rp ${new Intl.NumberFormat('id-ID').format(ctx.parsed.y)}`
-                            }
-                        }
-                    },
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            ticks: { callback: (value) => 'Rp ' + new Intl.NumberFormat('id-ID').format(value) }
-                        }
-                    }
-                }
-            });
-        });
-    </script>
-@endpush
 </x-app-layout>

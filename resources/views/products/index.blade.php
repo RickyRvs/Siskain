@@ -307,7 +307,7 @@
             enctype="multipart/form-data"
             class="p-4 sm:p-6 max-h-[75vh] overflow-y-auto"
             x-data="{
-                tracksStock: {{ old('tracks_stock', true) ? 'true' : 'false' }},
+                tracksStock: {{ old('tracks_stock', false) ? 'true' : 'false' }},
                 rows: [],
                 priceModalDisplay: '',
                 priceJualDisplay: '',

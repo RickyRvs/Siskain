@@ -52,10 +52,6 @@ class TransactionController extends Controller
 
     public function create()
     {
-        // Produk boleh dipilih di kasir kalau:
-        // - stoknya masih ada, ATAU
-        // - punya varian (stok dicek di level varian), ATAU
-        // - tracks_stock = false (produk kayak Es Teh, dibikin on-demand, gak ada batas stok produk)
         $products = Product::with(['variants', 'ingredients'])
             ->where(function ($q) {
                 $q->where('stock', '>', 0)
@@ -86,8 +82,6 @@ class TransactionController extends Controller
             'is_piutang' => 'nullable|boolean',
         ]);
 
-        // Gabungkan baris item dengan produk/varian yang sama, akumulasikan qty-nya,
-        // supaya pengecekan stok di bawah gak "lolos" gara-gara dicek per baris terpisah.
         $merged = [];
         foreach ($validated['items'] as $item) {
             $key = $item['product_id'] . '-' . ($item['product_variant_id'] ?? '0');
@@ -128,8 +122,6 @@ class TransactionController extends Controller
                                 throw new \RuntimeException("Produk {$product->name} punya varian, pilih variannya dulu.");
                             }
 
-                            // Produk tanpa tracks_stock (Es Teh dkk) skip pengecekan stok produk,
-                            // tapi kalau dia punya resep bahan baku, bahan bakunya tetap harus dicek.
                             if ($product->tracks_stock && $product->stock < $item['qty']) {
                                 throw new \RuntimeException("Stok produk {$product->name} tidak mencukupi.");
                             }
@@ -166,10 +158,11 @@ class TransactionController extends Controller
 
                     $total = max(0, $subtotal - $discount + $tax + $additionalFee);
                     $paidAmount = $validated['paid_amount'];
-                    $isPiutang = !empty($validated['is_piutang']) || $paidAmount < $total;
 
-                    // lockForUpdate di sini bikin transaksi lain yang lagi generate invoice
-                    // di hari yang sama antre, bukan cuma count biasa.
+                    // Semua metode bayar (tunai/transfer/qris/lainnya) dicatat manual oleh kasir.
+                    $isPiutang = !empty($validated['is_piutang']) || $paidAmount < $total;
+                    $status = $isPiutang ? 'piutang' : 'lunas';
+
                     $todayCount = Transaction::whereDate('created_at', today())->lockForUpdate()->count();
 
                     $transaction = Transaction::create([
@@ -182,7 +175,7 @@ class TransactionController extends Controller
                         'additional_fee' => $additionalFee,
                         'total' => $total,
                         'payment_method' => $validated['payment_method'],
-                        'status' => $isPiutang ? 'piutang' : 'lunas',
+                        'status' => $status,
                         'paid_amount' => $paidAmount,
                         'change_amount' => max(0, $paidAmount - $total),
                     ]);
@@ -205,7 +198,6 @@ class TransactionController extends Controller
                         } else {
                             $product = Product::with('ingredients')->lockForUpdate()->find($data['product_id']);
 
-                            // Cuma potong stok produk kalau memang dia yang melacak stoknya sendiri.
                             if ($product->tracks_stock) {
                                 $product->decrement('stock', $data['qty']);
                                 StockMovement::create([
@@ -217,8 +209,6 @@ class TransactionController extends Controller
                                 ]);
                             }
 
-                            // Kalau produk ini punya resep bahan baku (Es Teh Susu -> Susu),
-                            // potong stok bahan sesuai qty_used * qty terjual, apapun status tracks_stock-nya.
                             foreach ($product->ingredients as $ingredient) {
                                 $needed = $ingredient->pivot->qty_used * $data['qty'];
 
@@ -251,13 +241,10 @@ class TransactionController extends Controller
                 return redirect()->route('transactions.show', $transaction)->with('success', 'Transaksi berhasil disimpan.');
 
             } catch (QueryException $e) {
-                // Kemungkinan invoice_number bentrok karena dua transaksi dibuat nyaris bersamaan.
-                // Syaratnya kolom invoice_number harus unique di migration supaya retry ini kepakai.
                 $isDuplicateInvoice = str_contains(strtolower($e->getMessage()), 'invoice_number');
                 if (!$isDuplicateInvoice || $attempts >= 3) {
                     throw $e;
                 }
-                // lanjut loop, invoice_number akan digenerate ulang di percobaan berikutnya
             } catch (\RuntimeException $e) {
                 return back()->withInput()->with('error', $e->getMessage());
             }
@@ -305,11 +292,6 @@ class TransactionController extends Controller
         return back()->with('success', 'Pembayaran piutang berhasil dicatat.');
     }
 
-    /**
-     * Batalkan transaksi. Stok produk/varian & bahan baku yang tadi dipotong
-     * pas store() dikembalikan lagi di sini, dicatat sebagai StockMovement/
-     * IngredientStockMovement tipe 'in' biar tetap ketelusur di riwayat stok.
-     */
     public function cancel(Request $request, Transaction $transaction)
     {
         if ($transaction->status === 'batal') {
@@ -320,71 +302,73 @@ class TransactionController extends Controller
             'reason' => 'nullable|string|max:255',
         ]);
 
-        DB::transaction(function () use ($transaction, $validated) {
-            $transaction->load('items.product.ingredients', 'items.variant');
+        $note = 'Pembatalan transaksi ' . $transaction->invoice_number
+            . (!empty($validated['reason']) ? ' - ' . $validated['reason'] : '');
 
-            $note = 'Pembatalan transaksi ' . $transaction->invoice_number
-                . (!empty($validated['reason']) ? ' - ' . $validated['reason'] : '');
-
-            foreach ($transaction->items as $item) {
-                if ($item->product_variant_id) {
-                    $variant = ProductVariant::lockForUpdate()->find($item->product_variant_id);
-
-                    if ($variant) {
-                        $variant->increment('stock', $item->qty);
-                        StockMovement::create([
-                            'product_id' => $variant->product_id,
-                            'product_variant_id' => $variant->id,
-                            'type' => 'in',
-                            'qty' => $item->qty,
-                            'note' => $note,
-                            'user_id' => auth()->id(),
-                        ]);
-                    }
-                } else {
-                    $product = Product::with('ingredients')->lockForUpdate()->find($item->product_id);
-
-                    if ($product) {
-                        if ($product->tracks_stock) {
-                            $product->increment('stock', $item->qty);
-                            StockMovement::create([
-                                'product_id' => $product->id,
-                                'type' => 'in',
-                                'qty' => $item->qty,
-                                'note' => $note,
-                                'user_id' => auth()->id(),
-                            ]);
-                        }
-
-                        foreach ($product->ingredients as $ingredient) {
-                            $restored = $ingredient->pivot->qty_used * $item->qty;
-
-                            $ingredientLocked = Ingredient::lockForUpdate()->find($ingredient->id);
-                            if ($ingredientLocked) {
-                                $ingredientLocked->increment('stock', $restored);
-                                IngredientStockMovement::create([
-                                    'ingredient_id' => $ingredient->id,
-                                    'type' => 'in',
-                                    'qty' => $restored,
-                                    'note' => $note . ' (' . $product->name . ')',
-                                    'user_id' => auth()->id(),
-                                ]);
-                            }
-                        }
-                    }
-                }
-            }
-
-            $transaction->update(['status' => 'batal']);
+        DB::transaction(function () use ($transaction, $note) {
+            $this->restoreStockAndCancel($transaction, $note);
         });
 
         return redirect()->route('transactions.show', $transaction)
             ->with('success', 'Transaksi berhasil dibatalkan, stok sudah dikembalikan.');
     }
 
-    /**
-     * Download struk transaksi sebagai PDF (butuh package barryvdh/laravel-dompdf).
-     */
+    protected function restoreStockAndCancel(Transaction $transaction, string $note): void
+    {
+        $transaction->load('items.product.ingredients', 'items.variant');
+
+        foreach ($transaction->items as $item) {
+            if ($item->product_variant_id) {
+                $variant = ProductVariant::lockForUpdate()->find($item->product_variant_id);
+
+                if ($variant) {
+                    $variant->increment('stock', $item->qty);
+                    StockMovement::create([
+                        'product_id' => $variant->product_id,
+                        'product_variant_id' => $variant->id,
+                        'type' => 'in',
+                        'qty' => $item->qty,
+                        'note' => $note,
+                        'user_id' => auth()->id(),
+                    ]);
+                }
+            } else {
+                $product = Product::with('ingredients')->lockForUpdate()->find($item->product_id);
+
+                if ($product) {
+                    if ($product->tracks_stock) {
+                        $product->increment('stock', $item->qty);
+                        StockMovement::create([
+                            'product_id' => $product->id,
+                            'type' => 'in',
+                            'qty' => $item->qty,
+                            'note' => $note,
+                            'user_id' => auth()->id(),
+                        ]);
+                    }
+
+                    foreach ($product->ingredients as $ingredient) {
+                        $restored = $ingredient->pivot->qty_used * $item->qty;
+
+                        $ingredientLocked = Ingredient::lockForUpdate()->find($ingredient->id);
+                        if ($ingredientLocked) {
+                            $ingredientLocked->increment('stock', $restored);
+                            IngredientStockMovement::create([
+                                'ingredient_id' => $ingredient->id,
+                                'type' => 'in',
+                                'qty' => $restored,
+                                'note' => $note . ' (' . $product->name . ')',
+                                'user_id' => auth()->id(),
+                            ]);
+                        }
+                    }
+                }
+            }
+        }
+
+        $transaction->update(['status' => 'batal']);
+    }
+
     public function downloadPdf(Transaction $transaction)
     {
         $transaction->load(['items.product', 'items.variant', 'user', 'customer', 'payments' => fn ($q) => $q->oldest()]);

@@ -67,6 +67,7 @@
                             <thead class="bg-[#F6F3EC] text-[#8A8272] text-xs uppercase">
                                 <tr>
                                     <th class="text-left px-5 py-3 whitespace-nowrap">Nama</th>
+                                    <th class="text-left px-5 py-3 whitespace-nowrap">Username</th>
                                     <th class="text-left px-5 py-3 whitespace-nowrap">Email</th>
                                     <th class="text-left px-5 py-3">Akses Menu</th>
                                     <th class="text-left px-5 py-3 whitespace-nowrap">Status</th>
@@ -84,6 +85,7 @@
                                                 <span class="font-medium text-[#1F2A24]">{{ $s->name }}</span>
                                             </div>
                                         </td>
+                                        <td class="px-5 py-3 text-[#5B5647] whitespace-nowrap">{{ $s->username }}</td>
                                         <td class="px-5 py-3 text-[#5B5647] whitespace-nowrap">{{ $s->email }}</td>
                                         <td class="px-5 py-3">
                                             <div class="flex flex-wrap gap-1 max-w-[220px]">
@@ -141,7 +143,7 @@
                                     </div>
                                     <div class="min-w-0">
                                         <p class="font-medium text-[#1F2A24] truncate">{{ $s->name }}</p>
-                                        <p class="text-xs text-[#8A8272] truncate">{{ $s->email }}</p>
+                                        <p class="text-xs text-[#8A8272] truncate">@{{ $s->username }} &middot; {{ $s->email }}</p>
                                     </div>
                                 </div>
                                 <span class="inline-flex items-center gap-1.5 text-[10px] font-medium uppercase px-1.5 py-0.5 rounded whitespace-nowrap shrink-0 {{ $s->isOnline() ? 'bg-[#EAF3EE] text-[#2F6F4E]' : 'bg-[#F2F2F2] text-[#8A8272]' }}">
@@ -222,6 +224,15 @@
                     </div>
 
                     <div>
+                        <x-input-label for="create_username" value="Username" />
+                        <x-text-input id="create_username" name="username" class="block mt-1 w-full" :value="old('_form') === 'create' ? old('username') : ''" required autocomplete="off" />
+                        <p class="text-xs text-[#8A8272] mt-1">Dipakai buat login (bukan email). Tanpa spasi, boleh pakai - atau _.</p>
+                        @if (old('_form') === 'create')
+                            <x-input-error :messages="$errors->get('username')" class="mt-1" />
+                        @endif
+                    </div>
+
+                    <div>
                         <x-input-label for="create_email" value="Email" />
                         <x-text-input id="create_email" type="email" name="email" class="block mt-1 w-full" :value="old('_form') === 'create' ? old('email') : ''" required />
                         @if (old('_form') === 'create')
@@ -291,6 +302,14 @@
                             <x-text-input id="edit_name_{{ $s->id }}" name="name" class="block mt-1 w-full" :value="$isReopened ? old('name') : $s->name" required />
                             @if ($isReopened)
                                 <x-input-error :messages="$errors->get('name')" class="mt-1" />
+                            @endif
+                        </div>
+
+                        <div>
+                            <x-input-label for="edit_username_{{ $s->id }}" value="Username" />
+                            <x-text-input id="edit_username_{{ $s->id }}" name="username" class="block mt-1 w-full" :value="$isReopened ? old('username') : $s->username" required autocomplete="off" />
+                            @if ($isReopened)
+                                <x-input-error :messages="$errors->get('username')" class="mt-1" />
                             @endif
                         </div>
 

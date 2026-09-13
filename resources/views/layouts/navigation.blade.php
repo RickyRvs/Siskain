@@ -109,6 +109,15 @@
                         </a>
                     @endif
 
+                    @if (Route::has('expenses.index') && $currentUser->canAccessMenu('expenses'))
+                        <a href="{{ route('expenses.index') }}" @click="sidebarOpen = false" class="{{ $navLink(request()->routeIs('expenses.*')) }}">
+                            <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.25 18L9 11.25l4.306 4.307a11.95 11.95 0 015.814-5.518l2.74-1.22m0 0l-5.94-2.28m5.94 2.28l-2.28 5.941" />
+                            </svg>
+                            {{ __('Pengeluaran') }}
+                        </a>
+                    @endif
+
                     @if (Route::has('reports.index') && $currentUser->canAccessMenu('reports'))
                         <a href="{{ route('reports.index') }}" @click="sidebarOpen = false" class="{{ $navLink(request()->routeIs('reports.*')) }}">
                             <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -235,10 +244,10 @@
                 x-transition:enter="transition ease-out duration-150"
                 x-transition:enter-start="opacity-0 translate-y-1"
                 x-transition:enter-end="opacity-100 translate-y-0"
-                class="absolute bottom-full left-0 right-0 mb-2 bg-[#153834] ring-1 ring-white/10 rounded-lg shadow-lg overflow-hidden"
+                class="absolute bottom-full left-0 right-0 mb-2 bg-white ring-1 ring-[#E7E1D3] rounded-lg shadow-lg overflow-hidden"
             >
-                <a href="{{ route('profile.edit') }}" class="flex items-center gap-2.5 px-3.5 py-2.5 text-sm font-medium text-white/80 hover:text-white hover:bg-white/5 transition">
-                    <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <a href="{{ route('profile.edit') }}" class="flex items-center gap-2.5 px-3.5 py-2.5 text-sm font-medium text-[#1F2A24] hover:bg-[#F6F3EC] transition">
+                    <svg class="w-4 h-4 shrink-0 text-[#8A8272]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.121 17.804A13.937 13.937 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0z" />
                     </svg>
                     {{ __('Profile') }}
@@ -247,7 +256,7 @@
                     @csrf
                     <a href="{{ route('logout') }}"
                        onclick="event.preventDefault(); this.closest('form').submit();"
-                       class="flex items-center gap-2.5 px-3.5 py-2.5 text-sm font-medium text-[#F0A18C] hover:text-white hover:bg-[#B5482E] transition cursor-pointer border-t border-white/5"
+                       class="flex items-center gap-2.5 px-3.5 py-2.5 text-sm font-medium text-[#B5482E] hover:text-white hover:bg-[#B5482E] transition cursor-pointer border-t border-[#E7E1D3]"
                     >
                         <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />

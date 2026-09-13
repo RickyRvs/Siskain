@@ -10,6 +10,9 @@
             $layoutBrand = $layoutUser?->role === 'superadmin'
                 ? __('Super Admin')
                 : ($layoutUser?->tenant->name ?? config('app.name', 'Laravel'));
+            $layoutColor = $layoutUser?->role === 'superadmin'
+                ? '#0F2E2B'
+                : ($layoutUser?->tenant->primary_color ?? '#0F2E2B');
         @endphp
 
         <title>{{ $layoutBrand }}</title>
@@ -41,7 +44,10 @@
             <div class="flex-1 flex flex-col min-w-0 lg:pl-64 print:pl-0">
 
                 {{-- Mobile topbar --}}
-                <div class="lg:hidden print:hidden sticky top-0 z-20 flex items-center justify-between bg-[#0F2E2B] px-4 py-3">
+                <div
+                    style="background-color: {{ $layoutColor }}"
+                    class="lg:hidden print:hidden sticky top-0 z-20 flex items-center justify-between px-4 py-3"
+                >
                     <button @click="sidebarOpen = true" class="text-[#F6F3EC]" aria-label="{{ __('Buka menu') }}">
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />

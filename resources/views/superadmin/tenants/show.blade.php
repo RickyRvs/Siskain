@@ -6,6 +6,10 @@
         : ($n >= 1_000_000
             ? 'Rp ' . rtrim(rtrim(number_format($n / 1_000_000, 1, ',', '.'), '0'), ',') . ' Jt'
             : 'Rp ' . number_format($n, 0, ',', '.'));
+
+    // Kalau validasi form edit akun gagal, kita perlu tau akun mana yang lagi diedit
+    // biar form-nya otomatis kebuka lagi (bukan ke-collapse & errornya ilang keliatan).
+    $reopenEditUserId = old('_account_form') === 'edit' ? (int) old('_account_id') : null;
 @endphp
 <x-app-layout>
     <x-slot name="header">
@@ -21,7 +25,7 @@
         </div>
     </x-slot>
 
-    <div class="py-6" x-data="{ showAddAccount: false }">
+    <div class="py-6" x-data="{ showAddAccount: false, editingUserId: {{ $reopenEditUserId ?? 'null' }} }">
         <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
 
             @if (session('success'))
@@ -160,15 +164,27 @@
 
                 {{-- Form tambah akun (owner tambahan / kasir) --}}
                 <div x-show="showAddAccount" x-cloak x-transition class="mb-4 p-4 bg-[#FAF8F2] rounded-lg">
+                    @if ($errors->any() && old('_account_form') === 'create')
+                        <div class="mb-3 text-xs text-[#B5482E] space-y-0.5">
+                            @foreach ($errors->all() as $error)
+                                <p>{{ $error }}</p>
+                            @endforeach
+                        </div>
+                    @endif
                     <form method="POST" action="{{ route('superadmin.tenants.users.store', $tenant) }}" class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         @csrf
+                        <input type="hidden" name="_account_form" value="create">
                         <div>
                             <label class="block text-xs text-[#8A8272] mb-1">Nama</label>
-                            <input type="text" name="name" required class="w-full text-sm rounded-lg border-[#DDD5C2] shadow-sm focus:border-[#D4A73C] focus:ring-[#D4A73C]">
+                            <input type="text" name="name" value="{{ old('_account_form') === 'create' ? old('name') : '' }}" required class="w-full text-sm rounded-lg border-[#DDD5C2] shadow-sm focus:border-[#D4A73C] focus:ring-[#D4A73C]">
+                        </div>
+                        <div>
+                            <label class="block text-xs text-[#8A8272] mb-1">Username</label>
+                            <input type="text" name="username" value="{{ old('_account_form') === 'create' ? old('username') : '' }}" required autocomplete="off" class="w-full text-sm rounded-lg border-[#DDD5C2] shadow-sm focus:border-[#D4A73C] focus:ring-[#D4A73C]">
                         </div>
                         <div>
                             <label class="block text-xs text-[#8A8272] mb-1">Email</label>
-                            <input type="email" name="email" required class="w-full text-sm rounded-lg border-[#DDD5C2] shadow-sm focus:border-[#D4A73C] focus:ring-[#D4A73C]">
+                            <input type="email" name="email" value="{{ old('_account_form') === 'create' ? old('email') : '' }}" required class="w-full text-sm rounded-lg border-[#DDD5C2] shadow-sm focus:border-[#D4A73C] focus:ring-[#D4A73C]">
                         </div>
                         <div>
                             <label class="block text-xs text-[#8A8272] mb-1">Role</label>
@@ -177,7 +193,7 @@
                                 <option value="owner">Owner</option>
                             </select>
                         </div>
-                        <div>
+                        <div class="sm:col-span-2">
                             <label class="block text-xs text-[#8A8272] mb-1">Password (opsional)</label>
                             <input type="text" name="password" placeholder="Kosongkan untuk auto-generate" class="w-full text-sm rounded-lg border-[#DDD5C2] shadow-sm focus:border-[#D4A73C] focus:ring-[#D4A73C]">
                         </div>
@@ -191,45 +207,87 @@
                 {{-- Daftar akun --}}
                 <div class="divide-y divide-[#EFEAE0]">
                     @forelse ($tenant->users as $u)
-                        <div class="py-3 flex flex-col sm:flex-row sm:items-center gap-3">
-                            <div class="flex items-center gap-3 min-w-0 flex-1">
-                                <span class="relative shrink-0">
-                                    <span class="w-9 h-9 rounded-full bg-[#0F2E2B] text-white text-xs font-bold flex items-center justify-center">
-                                        {{ strtoupper(substr($u->name, 0, 1)) }}
-                                    </span>
-                                    @if ($u->last_active_at && $u->last_active_at->gte(now()->subMinutes(5)))
-                                        <span class="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-[#2F6F4E] ring-2 ring-white" title="Sedang online"></span>
-                                    @endif
-                                </span>
-
-                                <div class="min-w-0 flex-1">
-                                    <div class="flex items-center gap-2">
-                                        <p class="text-sm font-medium text-[#1F2A24] truncate">{{ $u->name }}</p>
-                                        <span class="shrink-0 text-[10px] font-medium uppercase px-1.5 py-0.5 rounded {{ $u->role === 'owner' ? 'bg-[#1F2A24] text-white' : 'bg-[#F6F3EC] text-[#5B5647]' }}">
-                                            {{ ucfirst($u->role) }}
+                        @php $isEditingThis = $reopenEditUserId === $u->id; @endphp
+                        <div class="py-3">
+                            <div class="flex flex-col sm:flex-row sm:items-center gap-3">
+                                <div class="flex items-center gap-3 min-w-0 flex-1">
+                                    <span class="relative shrink-0">
+                                        <span class="w-9 h-9 rounded-full bg-[#0F2E2B] text-white text-xs font-bold flex items-center justify-center">
+                                            {{ strtoupper(substr($u->name, 0, 1)) }}
                                         </span>
+                                        @if ($u->last_active_at && $u->last_active_at->gte(now()->subMinutes(5)))
+                                            <span class="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-[#2F6F4E] ring-2 ring-white" title="Sedang online"></span>
+                                        @endif
+                                    </span>
+
+                                    <div class="min-w-0 flex-1">
+                                        <div class="flex items-center gap-2">
+                                            <p class="text-sm font-medium text-[#1F2A24] truncate">{{ $u->name }}</p>
+                                            <span class="shrink-0 text-[10px] font-medium uppercase px-1.5 py-0.5 rounded {{ $u->role === 'owner' ? 'bg-[#1F2A24] text-white' : 'bg-[#F6F3EC] text-[#5B5647]' }}">
+                                                {{ ucfirst($u->role) }}
+                                            </span>
+                                        </div>
+                                        <p class="text-xs text-[#8A8272] truncate">@{{ $u->username }} &middot; {{ $u->email }}</p>
                                     </div>
-                                    <p class="text-xs text-[#8A8272] truncate">{{ $u->email }}</p>
+                                </div>
+
+                                <div class="flex items-center gap-1 shrink-0 pl-12 sm:pl-0">
+                                    <button type="button" @click="editingUserId = (editingUserId === {{ $u->id }} ? null : {{ $u->id }})"
+                                            title="Edit Akun" aria-label="Edit akun {{ $u->name }}"
+                                            class="p-2 rounded-lg text-[#B5842A] hover:bg-[#FBF1DD] transition">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931z" /></svg>
+                                    </button>
+                                    <form method="POST" action="{{ route('superadmin.tenants.users.reset-password', [$tenant, $u]) }}"
+                                          onsubmit="return confirm('Reset password {{ $u->name }}? Password lama langsung tidak berlaku.');">
+                                        @csrf
+                                        <button type="submit" title="Reset Password" aria-label="Reset password {{ $u->name }}"
+                                                class="p-2 rounded-lg text-[#B5842A] hover:bg-[#FBF1DD] transition">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+                                        </button>
+                                    </form>
+                                    <form method="POST" action="{{ route('superadmin.tenants.users.destroy', [$tenant, $u]) }}"
+                                          onsubmit="return confirm('Hapus akun {{ $u->name }}?');">
+                                        @csrf @method('DELETE')
+                                        <button type="submit" title="Hapus Akun" aria-label="Hapus akun {{ $u->name }}"
+                                                class="p-2 rounded-lg text-[#B5482E] hover:bg-[#FBEAE6] transition">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M9 7V4a1 1 0 011-1h4a1 1 0 011 1v3M4 7h16" /></svg>
+                                        </button>
+                                    </form>
                                 </div>
                             </div>
 
-                            <div class="flex items-center gap-1 shrink-0 pl-12 sm:pl-0">
-                                <form method="POST" action="{{ route('superadmin.tenants.users.reset-password', [$tenant, $u]) }}"
-                                      onsubmit="return confirm('Reset password {{ $u->name }}? Password lama langsung tidak berlaku.');">
-                                    @csrf
-                                    <button type="submit" title="Reset Password" aria-label="Reset password {{ $u->name }}"
-                                            class="p-2 rounded-lg text-[#B5842A] hover:bg-[#FBF1DD] transition">
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
-                                    </button>
-                                </form>
-                                <form method="POST" action="{{ route('superadmin.tenants.users.destroy', [$tenant, $u]) }}"
-                                      onsubmit="return confirm('Hapus akun {{ $u->name }}?');">
-                                    @csrf @method('DELETE')
-                                    <button type="submit" title="Hapus Akun" aria-label="Hapus akun {{ $u->name }}"
-                                            class="p-2 rounded-lg text-[#B5482E] hover:bg-[#FBEAE6] transition">
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M9 7V4a1 1 0 011-1h4a1 1 0 011 1v3M4 7h16" /></svg>
-                                    </button>
-                                </form>
+                            {{-- Form edit akun (nama/username/email) — toggle inline, gak pakai modal biar simpel --}}
+                            <div x-show="editingUserId === {{ $u->id }}" x-cloak x-transition class="mt-3 pl-0 sm:pl-12">
+                                <div class="p-4 bg-[#FAF8F2] rounded-lg">
+                                    @if ($isEditingThis && $errors->any())
+                                        <div class="mb-3 text-xs text-[#B5482E] space-y-0.5">
+                                            @foreach ($errors->all() as $error)
+                                                <p>{{ $error }}</p>
+                                            @endforeach
+                                        </div>
+                                    @endif
+                                    <form method="POST" action="{{ route('superadmin.tenants.users.update', [$tenant, $u]) }}" class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                        @csrf @method('PUT')
+                                        <input type="hidden" name="_account_form" value="edit">
+                                        <input type="hidden" name="_account_id" value="{{ $u->id }}">
+                                        <div>
+                                            <label class="block text-xs text-[#8A8272] mb-1">Nama</label>
+                                            <input type="text" name="name" value="{{ $isEditingThis ? old('name') : $u->name }}" required class="w-full text-sm rounded-lg border-[#DDD5C2] shadow-sm focus:border-[#D4A73C] focus:ring-[#D4A73C]">
+                                        </div>
+                                        <div>
+                                            <label class="block text-xs text-[#8A8272] mb-1">Username</label>
+                                            <input type="text" name="username" value="{{ $isEditingThis ? old('username') : $u->username }}" required autocomplete="off" class="w-full text-sm rounded-lg border-[#DDD5C2] shadow-sm focus:border-[#D4A73C] focus:ring-[#D4A73C]">
+                                        </div>
+                                        <div>
+                                            <label class="block text-xs text-[#8A8272] mb-1">Email</label>
+                                            <input type="email" name="email" value="{{ $isEditingThis ? old('email') : $u->email }}" required class="w-full text-sm rounded-lg border-[#DDD5C2] shadow-sm focus:border-[#D4A73C] focus:ring-[#D4A73C]">
+                                        </div>
+                                        <div class="sm:col-span-3 flex justify-end gap-2 pt-1">
+                                            <button type="button" @click="editingUserId = null" class="px-3.5 py-2 text-sm text-[#8A8272] hover:text-[#1F2A24]">Batal</button>
+                                            <button type="submit" class="px-3.5 py-2 bg-[#1F2A24] text-white text-sm font-medium rounded-lg hover:bg-[#16201B]">Simpan</button>
+                                        </div>
+                                    </form>
+                                </div>
                             </div>
                         </div>
                     @empty

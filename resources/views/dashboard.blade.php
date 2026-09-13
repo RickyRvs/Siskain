@@ -1,16 +1,63 @@
+@php
+    // Warna hero ngikutin warna tenant (sama kaya sidebar), bukan hardcode hijau lagi.
+    // Sisi kiri gradiennya digelapin dikit dari warna aslinya biar tetep ada kedalaman & teks putih kebaca.
+    $heroBase = Auth::user()->tenant?->primary_color ?? '#0F2E2B';
+
+    $hexToRgb = function (string $hex): array {
+        $hex = ltrim($hex, '#');
+        if (strlen($hex) === 3) {
+            $hex = $hex[0].$hex[0].$hex[1].$hex[1].$hex[2].$hex[2];
+        }
+        return array_map('hexdec', str_split(str_pad($hex, 6, '0'), 2));
+    };
+    $adjustBrightness = function (string $hex, float $amount) use ($hexToRgb): string {
+        [$r, $g, $b] = $hexToRgb($hex);
+        $target = $amount >= 0 ? 255 : 0;
+        $mix = fn ($c) => (int) round($c + ($target - $c) * abs($amount));
+        return sprintf('#%02x%02x%02x', $mix($r), $mix($g), $mix($b));
+    };
+
+    $heroFrom = $adjustBrightness($heroBase, -0.30);
+    $heroTo = $adjustBrightness($heroBase, 0.12);
+
+    $greeting = match (true) {
+        now()->hour < 11 => 'Selamat pagi',
+        now()->hour < 15 => 'Selamat siang',
+        now()->hour < 19 => 'Selamat sore',
+        default => 'Selamat malam',
+    };
+
+    // Angka rupiah dipendekkan (Jt/M) biar kartu statistik gak sesak;
+    // nilai pastinya tetap ada lewat atribut title (muncul saat di-hover).
+    $fmtRupiah = fn ($n) => abs($n) >= 1_000_000_000
+        ? ($n < 0 ? '-' : '') . 'Rp ' . rtrim(rtrim(number_format(abs($n) / 1_000_000_000, 1, ',', '.'), '0'), ',') . ' M'
+        : (abs($n) >= 1_000_000
+            ? ($n < 0 ? '-' : '') . 'Rp ' . rtrim(rtrim(number_format(abs($n) / 1_000_000, 1, ',', '.'), '0'), ',') . ' Jt'
+            : 'Rp ' . number_format($n, 0, ',', '.'));
+@endphp
+
 <x-app-layout>
     <div class="py-6">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
 
             <!-- Hero -->
-            <div class="rounded-2xl bg-gradient-to-br from-[#0F2E2B] to-[#1B4640] px-6 py-6 sm:px-8 sm:py-7 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                <div>
+            <div style="background: linear-gradient(135deg, {{ $heroFrom }}, {{ $heroTo }})"
+                 class="relative overflow-hidden rounded-2xl px-6 py-6 sm:px-8 sm:py-7 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+
+                {{-- tekstur titik halus, konsisten sama sidebar --}}
+                <div class="absolute inset-0 opacity-[0.07] pointer-events-none"
+                     style="background-image: radial-gradient(#FFFFFF 1px, transparent 1px); background-size: 18px 18px;"></div>
+
+                <div class="relative z-10 min-w-0">
                     <p class="text-white/60 text-sm">{{ now()->translatedFormat('l, d F Y') }}</p>
-                    <h2 class="text-2xl font-semibold text-white mt-0.5">Halo, {{ Auth::user()->name }} 👋</h2>
-                    <p class="text-white/60 text-sm mt-1">Berikut ringkasan singkat sebelum mulai kerja.</p>
+                    <h2 class="text-2xl font-semibold text-white mt-0.5 truncate">{{ $greeting }}, {{ explode(' ', Auth::user()->name)[0] }} 👋</h2>
+                    <p class="text-white/60 text-sm mt-1">
+                        Omzet hari ini <span class="text-white font-medium">Rp {{ number_format($todayRevenue, 0, ',', '.') }}</span>
+                        dari {{ $todayTransactionCount }} transaksi.
+                    </p>
                 </div>
                 <a href="{{ route('transactions.create') }}"
-                   class="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-[#D4A73C] text-[#0F2E2B] text-sm font-semibold rounded-lg hover:bg-[#E0B559] transition shrink-0">
+                   class="relative z-10 inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-[#D4A73C] text-[#0F2E2B] text-sm font-semibold rounded-lg hover:bg-[#E0B559] transition shrink-0">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
                     </svg>
@@ -20,7 +67,7 @@
 
             <!-- Aksi Cepat (bar horizontal, langsung terlihat) -->
             <div class="bg-white rounded-xl ring-1 ring-[#E7E1D3] shadow-sm p-3">
-                <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
                     <a href="{{ route('transactions.create') }}"
                        class="flex items-center gap-3 rounded-lg px-3 py-2.5 hover:bg-[#F6F3EC] transition group">
                         <div class="w-10 h-10 shrink-0 rounded-lg bg-[#FBF0DA] text-[#B5842A] flex items-center justify-center group-hover:bg-[#F5E3B8]">
@@ -76,41 +123,69 @@
             </div>
 
             <!-- Kartu statistik utama: Omzet, Laba, Kas, Transaksi -->
-            <div class="grid grid-cols-2 xl:grid-cols-4 gap-4">
+            <div class="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div class="bg-white rounded-xl ring-1 ring-[#E7E1D3] shadow-sm p-5 hover:shadow-md transition">
-                    <p class="text-xs text-[#8A8272] mb-1">Omzet Hari Ini <span class="text-[#B5A97A]">(Lunas)</span></p>
-                    <p class="text-xl font-semibold text-[#1F2A24]">Rp {{ number_format($todayRevenue, 0, ',', '.') }}</p>
-                    <p class="text-xs mt-1 {{ $revenueGrowth >= 0 ? 'text-[#2F6F4E]' : 'text-[#B5482E]' }}">
+                    <div class="flex items-start justify-between gap-2">
+                        <div class="min-w-0">
+                            <p class="text-xs text-[#8A8272] mb-1">Omzet Hari Ini <span class="text-[#B5A97A]">(Lunas)</span></p>
+                            <p class="text-xl font-semibold text-[#1F2A24]" title="Rp {{ number_format($todayRevenue, 0, ',', '.') }}">{{ $fmtRupiah($todayRevenue) }}</p>
+                        </div>
+                        <span class="w-9 h-9 shrink-0 rounded-lg bg-[#FBF0DA] text-[#B5842A] flex items-center justify-center">
+                            <svg class="w-4.5 h-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.66 0-3 .9-3 2s1.34 2 3 2 3 .9 3 2-1.34 2-3 2m0-8V6m0 2c1.66 0 3 .9 3 2m-3 6v2m0-2c-1.66 0-3-.9-3-2" /></svg>
+                        </span>
+                    </div>
+                    <p class="text-xs mt-2 inline-flex items-center gap-1 {{ $revenueGrowth >= 0 ? 'text-[#2F6F4E]' : 'text-[#B5482E]' }}">
                         {{ $revenueGrowth >= 0 ? '▲' : '▼' }} {{ abs($revenueGrowth) }}% dari kemarin
                     </p>
                 </div>
                 <div class="bg-white rounded-xl ring-1 ring-[#E7E1D3] shadow-sm p-5 hover:shadow-md transition">
-                    <p class="text-xs text-[#8A8272] mb-1">Laba Kotor Hari Ini</p>
-                    <p class="text-xl font-semibold {{ $todayGrossProfit >= 0 ? 'text-[#1F2A24]' : 'text-[#B5482E]' }}">Rp {{ number_format($todayGrossProfit, 0, ',', '.') }}</p>
-                    <p class="text-xs text-[#8A8272] mt-1">Margin {{ $todayMargin }}%</p>
+                    <div class="flex items-start justify-between gap-2">
+                        <div class="min-w-0">
+                            <p class="text-xs text-[#8A8272] mb-1">Laba Kotor Hari Ini</p>
+                            <p class="text-xl font-semibold {{ $todayGrossProfit >= 0 ? 'text-[#1F2A24]' : 'text-[#B5482E]' }}" title="Rp {{ number_format($todayGrossProfit, 0, ',', '.') }}">{{ $fmtRupiah($todayGrossProfit) }}</p>
+                        </div>
+                        <span class="w-9 h-9 shrink-0 rounded-lg bg-[#EAF3EE] text-[#2F6F4E] flex items-center justify-center">
+                            <svg class="w-4.5 h-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>
+                        </span>
+                    </div>
+                    <p class="text-xs text-[#8A8272] mt-2">Margin {{ $todayMargin }}%</p>
                 </div>
                 <div class="bg-white rounded-xl ring-1 ring-[#E7E1D3] shadow-sm p-5 hover:shadow-md transition">
-                    <p class="text-xs text-[#8A8272] mb-1">Kas Masuk Hari Ini</p>
-                    <p class="text-xl font-semibold text-[#2F6F4E]">Rp {{ number_format($todayKasMasuk, 0, ',', '.') }}</p>
-                    <p class="text-xs text-[#8A8272] mt-1">Termasuk cicilan piutang lama</p>
+                    <div class="flex items-start justify-between gap-2">
+                        <div class="min-w-0">
+                            <p class="text-xs text-[#8A8272] mb-1">Kas Masuk Hari Ini</p>
+                            <p class="text-xl font-semibold text-[#2F6F4E]" title="Rp {{ number_format($todayKasMasuk, 0, ',', '.') }}">{{ $fmtRupiah($todayKasMasuk) }}</p>
+                        </div>
+                        <span class="w-9 h-9 shrink-0 rounded-lg bg-[#E9F1F1] text-[#1B6E6E] flex items-center justify-center">
+                            <svg class="w-4.5 h-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-9 4h16a2 2 0 002-2V7a2 2 0 00-2-2H4a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
+                        </span>
+                    </div>
+                    <p class="text-xs text-[#8A8272] mt-2">Termasuk cicilan piutang lama</p>
                 </div>
                 <div class="bg-white rounded-xl ring-1 ring-[#E7E1D3] shadow-sm p-5 hover:shadow-md transition">
-                    <p class="text-xs text-[#8A8272] mb-1">Transaksi Hari Ini</p>
-                    <p class="text-xl font-semibold text-[#1F2A24]">{{ $todayTransactionCount }}</p>
-                    <p class="text-xs text-[#8A8272] mt-1">{{ $todayLunasCount }} lunas &middot; {{ $todayPiutangCount }} piutang</p>
+                    <div class="flex items-start justify-between gap-2">
+                        <div class="min-w-0">
+                            <p class="text-xs text-[#8A8272] mb-1">Transaksi Hari Ini</p>
+                            <p class="text-xl font-semibold text-[#1F2A24]">{{ $todayTransactionCount }}</p>
+                        </div>
+                        <span class="w-9 h-9 shrink-0 rounded-lg bg-[#FBEAE6] text-[#B5482E] flex items-center justify-center">
+                            <svg class="w-4.5 h-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-6a2 2 0 012-2h2a2 2 0 012 2v6m4 0V7a2 2 0 00-2-2H9a2 2 0 00-2 2v10a2 2 0 002 2h6a2 2 0 002-2z" /></svg>
+                        </span>
+                    </div>
+                    <p class="text-xs text-[#8A8272] mt-2">{{ $todayLunasCount }} lunas &middot; {{ $todayPiutangCount }} piutang</p>
                 </div>
             </div>
 
             <!-- Kartu statistik sekunder: Piutang & Stok -->
-            <div class="grid grid-cols-2 xl:grid-cols-4 gap-4">
+            <div class="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div class="bg-white rounded-xl ring-1 ring-[#E7E1D3] shadow-sm p-5 hover:shadow-md transition">
                     <p class="text-xs text-[#8A8272] mb-1">Piutang Baru Hari Ini</p>
-                    <p class="text-xl font-semibold {{ $todayPiutangBaru > 0 ? 'text-[#B5482E]' : 'text-[#1F2A24]' }}">Rp {{ number_format($todayPiutangBaru, 0, ',', '.') }}</p>
+                    <p class="text-xl font-semibold {{ $todayPiutangBaru > 0 ? 'text-[#B5482E]' : 'text-[#1F2A24]' }}" title="Rp {{ number_format($todayPiutangBaru, 0, ',', '.') }}">{{ $fmtRupiah($todayPiutangBaru) }}</p>
                     <p class="text-xs text-[#8A8272] mt-1">Belum masuk omzet</p>
                 </div>
                 <div class="bg-white rounded-xl ring-1 ring-[#E7E1D3] shadow-sm p-5 hover:shadow-md transition">
                     <p class="text-xs text-[#8A8272] mb-1">Piutang Aktif (semua)</p>
-                    <p class="text-xl font-semibold {{ $piutangTotal > 0 ? 'text-[#B5482E]' : 'text-[#1F2A24]' }}">Rp {{ number_format($piutangTotal, 0, ',', '.') }}</p>
+                    <p class="text-xl font-semibold {{ $piutangTotal > 0 ? 'text-[#B5482E]' : 'text-[#1F2A24]' }}" title="Rp {{ number_format($piutangTotal, 0, ',', '.') }}">{{ $fmtRupiah($piutangTotal) }}</p>
                     <p class="text-xs text-[#8A8272] mt-1">{{ $piutangCount }} transaksi belum lunas</p>
                 </div>
                 <div class="bg-white rounded-xl ring-1 ring-[#E7E1D3] shadow-sm p-5 hover:shadow-md transition">
@@ -120,14 +195,14 @@
                 </div>
                 <div class="bg-white rounded-xl ring-1 ring-[#E7E1D3] shadow-sm p-5 hover:shadow-md transition">
                     <p class="text-xs text-[#8A8272] mb-1">Omzet 7 Hari Terakhir</p>
-                    <p class="text-xl font-semibold text-[#1F2A24]">Rp {{ number_format($weekOmzet, 0, ',', '.') }}</p>
-                    <p class="text-xs text-[#8A8272] mt-1">+Rp {{ number_format($weekPiutangBaru, 0, ',', '.') }} piutang baru</p>
+                    <p class="text-xl font-semibold text-[#1F2A24]" title="Rp {{ number_format($weekOmzet, 0, ',', '.') }}">{{ $fmtRupiah($weekOmzet) }}</p>
+                    <p class="text-xs text-[#8A8272] mt-1">+{{ $fmtRupiah($weekPiutangBaru) }} piutang baru</p>
                 </div>
             </div>
 
             <!-- Grafik penjualan & metode pembayaran -->
-            <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
-                <div class="xl:col-span-2 bg-white rounded-xl ring-1 ring-[#E7E1D3] shadow-sm p-5">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div class="lg:col-span-2 bg-white rounded-xl ring-1 ring-[#E7E1D3] shadow-sm p-5">
                     <h3 class="text-sm font-medium text-[#8A8272] mb-4">Omzet & Piutang Baru &mdash; 7 Hari Terakhir</h3>
                     <div class="h-64">
                         <canvas id="salesTrendChart"></canvas>
@@ -159,7 +234,7 @@
             </div>
 
             <!-- Insight: produk terlaris, piutang teratas, stok kritis -->
-            <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div class="bg-white rounded-xl ring-1 ring-[#E7E1D3] shadow-sm p-5">
                     <h3 class="text-sm font-medium text-[#8A8272] mb-3">Produk Terlaris <span class="text-[#B5A97A] font-normal">(30 Hari, Lunas)</span></h3>
                     @forelse ($topProducts as $p)
@@ -257,58 +332,71 @@
     </div>
 
     @push('scripts')
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
-    <script>
-        const salesTrend = @json($salesTrend);
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js" defer
+        onerror="console.error('Chart.js gagal dimuat dari CDN — cek koneksi internet atau adblocker.')"></script>
+    <script defer>
+        document.addEventListener('DOMContentLoaded', function () {
+            const canvasEl = document.getElementById('salesTrendChart');
+            if (typeof Chart === 'undefined') {
+                console.error('Chart.js tidak tersedia. Grafik tidak bisa dirender.');
+                return;
+            }
+            if (!canvasEl) {
+                console.error('Canvas #salesTrendChart tidak ditemukan di DOM.');
+                return;
+            }
 
-        new Chart(document.getElementById('salesTrendChart'), {
-            data: {
-                labels: salesTrend.map(d => d.tanggal),
-                datasets: [
-                    {
-                        type: 'line',
-                        label: 'Omzet (Lunas)',
-                        data: salesTrend.map(d => d.omzet),
-                        borderColor: '#D4A73C',
-                        backgroundColor: 'rgba(212, 167, 60, 0.12)',
-                        fill: true,
-                        tension: 0.35,
-                        pointRadius: 3,
-                        pointBackgroundColor: '#D4A73C',
-                        order: 1,
-                    },
-                    {
-                        type: 'bar',
-                        label: 'Piutang Baru',
-                        data: salesTrend.map(d => d.piutang_baru),
-                        backgroundColor: 'rgba(181, 72, 46, 0.35)',
-                        borderColor: '#B5482E',
-                        borderWidth: 1,
-                        order: 2,
-                    },
-                ]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                interaction: { mode: 'index', intersect: false },
-                plugins: {
-                    legend: { position: 'top' },
-                    tooltip: {
-                        callbacks: {
-                            label: (ctx) => `${ctx.dataset.label}: Rp ${new Intl.NumberFormat('id-ID').format(ctx.parsed.y)}`
-                        }
-                    }
+            const salesTrend = @json($salesTrend);
+
+            new Chart(canvasEl, {
+                data: {
+                    labels: salesTrend.map(d => d.tanggal),
+                    datasets: [
+                        {
+                            type: 'line',
+                            label: 'Omzet (Lunas)',
+                            data: salesTrend.map(d => d.omzet),
+                            borderColor: '#D4A73C',
+                            backgroundColor: 'rgba(212, 167, 60, 0.12)',
+                            fill: true,
+                            tension: 0.35,
+                            pointRadius: 3,
+                            pointBackgroundColor: '#D4A73C',
+                            order: 1,
+                        },
+                        {
+                            type: 'bar',
+                            label: 'Piutang Baru',
+                            data: salesTrend.map(d => d.piutang_baru),
+                            backgroundColor: 'rgba(181, 72, 46, 0.35)',
+                            borderColor: '#B5482E',
+                            borderWidth: 1,
+                            order: 2,
+                        },
+                    ]
                 },
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        ticks: {
-                            callback: (value) => 'Rp ' + new Intl.NumberFormat('id-ID').format(value)
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: { mode: 'index', intersect: false },
+                    plugins: {
+                        legend: { position: 'top' },
+                        tooltip: {
+                            callbacks: {
+                                label: (ctx) => `${ctx.dataset.label}: Rp ${new Intl.NumberFormat('id-ID').format(ctx.parsed.y)}`
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: (value) => 'Rp ' + new Intl.NumberFormat('id-ID').format(value)
+                            }
                         }
                     }
                 }
-            }
+            });
         });
     </script>
     @endpush

@@ -21,6 +21,7 @@ class TenantUserController extends Controller
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
+            'username' => 'required|string|max:255|alpha_dash|unique:users,username',
             'email' => 'required|email|unique:users,email',
             'role' => 'required|in:owner,kasir',
             'password' => 'nullable|string|min:8',
@@ -31,6 +32,7 @@ class TenantUserController extends Controller
         $user = User::create([
             'tenant_id' => $tenant->id,
             'name' => $validated['name'],
+            'username' => $validated['username'],
             'email' => $validated['email'],
             'password' => Hash::make($plainPassword),
             'role' => $validated['role'],
@@ -41,6 +43,26 @@ class TenantUserController extends Controller
             ->with('success', "Akun {$user->name} berhasil dibuat.")
             ->with('revealed_password', $plainPassword)
             ->with('revealed_user_name', $user->name);
+    }
+
+    /**
+     * Ubah nama, username & email sebuah akun. Role & password tidak diubah lewat sini
+     * (role dikunci biar gak kena kasus "owner terakhir tiba-tiba jadi kasir" tanpa sadar;
+     * password punya jalur sendiri lewat resetPassword).
+     */
+    public function update(Request $request, Tenant $tenant, User $user)
+    {
+        abort_unless($user->tenant_id === $tenant->id, 404);
+
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'username' => ['required', 'string', 'max:255', 'alpha_dash', Rule::unique('users', 'username')->ignore($user->id)],
+            'email' => ['required', 'email', Rule::unique('users', 'email')->ignore($user->id)],
+        ]);
+
+        $user->update($validated);
+
+        return back()->with('success', "Akun {$user->name} berhasil diperbarui.");
     }
 
     /**

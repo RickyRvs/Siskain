@@ -75,6 +75,12 @@
                                 <x-input-error :messages="$errors->get('owner_name')" class="mt-1" />
                             </div>
                             <div>
+                                <x-input-label for="owner_username" value="Username Owner" />
+                                <x-text-input id="owner_username" name="owner_username" class="block mt-1 w-full" :value="old('owner_username')" required autocomplete="off" />
+                                <p class="text-xs text-[#8A8272] mt-1">Dipakai owner buat login (bukan email). Tanpa spasi, boleh pakai - atau _.</p>
+                                <x-input-error :messages="$errors->get('owner_username')" class="mt-1" />
+                            </div>
+                            <div>
                                 <x-input-label for="owner_email" value="Email Owner" />
                                 <x-text-input id="owner_email" type="email" name="owner_email" class="block mt-1 w-full" :value="old('owner_email')" required />
                                 <x-input-error :messages="$errors->get('owner_email')" class="mt-1" />

@@ -9,18 +9,19 @@ use Illuminate\Support\Facades\Hash;
 
 class StaffController extends Controller
 {
-   public function index(Request $request)
-{
-    $staff = User::where('tenant_id', $request->user()->tenant_id)
-        ->where('role', 'kasir')
-        ->latest()
-        ->paginate(10);
+    public function index(Request $request)
+    {
+        $staff = User::where('tenant_id', $request->user()->tenant_id)
+            ->where('role', 'kasir')
+            ->latest()
+            ->paginate(10);
 
-    return view('owner.staff.index', [
-        'staff' => $staff,
-        'menus' => config('menus'),
-    ]);
-}
+        return view('owner.staff.index', [
+            'staff' => $staff,
+            'menus' => config('menus'),
+        ]);
+    }
+
     public function create()
     {
         return view('owner.staff.create', ['menus' => config('menus')]);
@@ -30,6 +31,7 @@ class StaffController extends Controller
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
+            'username' => 'required|string|max:255|alpha_dash|unique:users,username',
             'email' => 'required|email|unique:users,email',
             'password' => 'required|string|min:8',
             'permissions' => 'nullable|array',
@@ -39,6 +41,7 @@ class StaffController extends Controller
         User::create([
             'tenant_id' => $request->user()->tenant_id,
             'name' => $validated['name'],
+            'username' => $validated['username'],
             'email' => $validated['email'],
             'password' => Hash::make($validated['password']),
             'role' => 'kasir',
@@ -62,6 +65,7 @@ class StaffController extends Controller
 
         $validated = $request->validate([
             'name' => 'required|string|max:255',
+            'username' => 'required|string|max:255|alpha_dash|unique:users,username,' . $staff->id,
             'email' => 'required|email|unique:users,email,' . $staff->id,
             'password' => 'nullable|string|min:8',
             'permissions' => 'nullable|array',
@@ -69,6 +73,7 @@ class StaffController extends Controller
         ]);
 
         $staff->name = $validated['name'];
+        $staff->username = $validated['username'];
         $staff->email = $validated['email'];
         $staff->permissions = $validated['permissions'] ?? [];
 

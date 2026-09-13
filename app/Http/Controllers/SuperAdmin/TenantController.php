@@ -63,6 +63,7 @@ class TenantController extends Controller
             User::create([
                 'tenant_id' => $tenant->id,
                 'name' => $validated['owner_name'],
+                'username' => $validated['owner_username'],
                 'email' => $validated['owner_email'],
                 'password' => Hash::make($validated['owner_password']),
                 'role' => 'owner',
@@ -173,8 +174,8 @@ class TenantController extends Controller
     }
 
     /**
-     * Validasi bersama untuk store() & update(). Saat update, email owner tidak divalidasi
-     * di sini karena akun owner dikelola lewat TenantUserController (halaman detail).
+     * Validasi bersama untuk store() & update(). Saat update, email/username owner tidak
+     * divalidasi di sini karena akun owner dikelola lewat TenantUserController (halaman detail).
      */
     private function validateTenant(Request $request, ?Tenant $tenant = null): array
     {
@@ -188,6 +189,7 @@ class TenantController extends Controller
 
         if (!$tenant) {
             $rules['owner_name'] = 'required|string|max:255';
+            $rules['owner_username'] = 'required|string|max:255|alpha_dash|unique:users,username';
             $rules['owner_email'] = 'required|email|unique:users,email';
             $rules['owner_password'] = 'required|string|min:8';
         }

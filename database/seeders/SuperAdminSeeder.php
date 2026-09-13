@@ -15,6 +15,7 @@ class SuperAdminSeeder extends Seeder
             ['email' => 'superadmin@gmail.com'],
             [
                 'name' => 'Super Admin',
+                'username' => 'superadmin',
                 'password' => Hash::make('admin123'),
                 'role' => 'superadmin',
                 'tenant_id' => null,
@@ -22,6 +23,6 @@ class SuperAdminSeeder extends Seeder
             ]
         );
 
-        $this->command->info('Superadmin siap: superadmin@gmail.com / admin123');
+        $this->command->info('Superadmin siap: username superadmin / password admin123');
     }
 }

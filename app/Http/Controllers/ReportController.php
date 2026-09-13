@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Expense;
 use App\Models\Payment;
 use App\Models\Product;
 use App\Models\Transaction;
@@ -27,6 +28,7 @@ class ReportController extends Controller
         $dailyRecap = $this->buildDailyRecap($start, $end);
         $productRecap = $this->buildProductRecap($start, $end);
         $piutangRecap = $this->buildPiutangRecap($start, $end);
+        $expenseRecap = $this->buildExpenseRecap($start, $end);
 
         $paymentRecap = Transaction::whereBetween('created_at', [$start, $end])
             ->where('status', 'lunas')
@@ -44,7 +46,7 @@ class ReportController extends Controller
 
         return view('reports.index', compact(
             'period', 'start', 'end', 'summary', 'dailyRecap', 'productRecap',
-            'paymentRecap', 'statusRecap', 'piutangRecap'
+            'paymentRecap', 'statusRecap', 'piutangRecap', 'expenseRecap'
         ));
     }
 
@@ -83,6 +85,7 @@ class ReportController extends Controller
                 'dailyRecap' => $this->buildDailyRecap($start, $end),
                 'productRecap' => $this->buildProductRecap($start, $end),
                 'piutangRecap' => $this->buildPiutangRecap($start, $end),
+                'expenseRecap' => $this->buildExpenseRecap($start, $end),
             ],
             'stok' => [
                 'stockRecap' => $this->buildStockRecap(),
@@ -171,6 +174,12 @@ class ReportController extends Controller
         $summary['kas_masuk'] = (float) Payment::whereDate('paid_at', '>=', $start->format('Y-m-d'))
             ->whereDate('paid_at', '<=', $end->format('Y-m-d'))
             ->sum('amount');
+
+        // Pengeluaran operasional periode ini (sewa, es batu, dll - di luar modal/COGS produk)
+        $summary['pengeluaran_operasional'] = (float) Expense::whereBetween('expense_date', [$start->format('Y-m-d'), $end->format('Y-m-d')])
+            ->sum('amount');
+
+        $summary['laba_bersih'] = $summary['profit'] - $summary['pengeluaran_operasional'];
 
         return $summary;
     }
@@ -311,6 +320,22 @@ class ReportController extends Controller
                 'total' => $t->total,
                 'dibayar' => $t->payments_sum_amount ?? 0,
                 'sisa' => $t->total - ($t->payments_sum_amount ?? 0),
+            ]);
+    }
+
+      private function buildExpenseRecap(Carbon $start, Carbon $end)
+    {
+        return Expense::whereBetween('expense_date', [$start->format('Y-m-d'), $end->format('Y-m-d')])
+            ->with('expenseType')
+            ->select('expense_type_id')
+            ->selectRaw('SUM(amount) as total, COUNT(*) as jumlah')
+            ->groupBy('expense_type_id')
+            ->orderByDesc('total')
+            ->get()
+            ->map(fn ($row) => [
+                'category' => $row->expenseType->name ?? 'Tidak diketahui',
+                'total' => (float) $row->total,
+                'jumlah' => (int) $row->jumlah,
             ]);
     }
 }

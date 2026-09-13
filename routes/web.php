@@ -3,6 +3,7 @@
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\ExpenseController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\ProductVariantController;
 use App\Http\Controllers\ProfileController;
@@ -15,6 +16,7 @@ use App\Http\Controllers\SuperAdmin\TenantUserController;
 use App\Http\Controllers\SuperAdmin\SuperAdminDashboardController;
 use App\Http\Controllers\Owner\SettingController;
 use App\Http\Controllers\Owner\StaffController;
+use App\Http\Controllers\ExpenseTypeController;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 
@@ -52,6 +54,7 @@ Route::middleware(['auth', 'verified', 'role:superadmin'])
 
         // Manajemen akun (owner & kasir) di dalam sebuah tenant
         Route::post('tenants/{tenant}/users', [TenantUserController::class, 'store'])->name('tenants.users.store');
+        Route::put('tenants/{tenant}/users/{user}', [TenantUserController::class, 'update'])->name('tenants.users.update');
         Route::post('tenants/{tenant}/users/{user}/reset-password', [TenantUserController::class, 'resetPassword'])->name('tenants.users.reset-password');
         Route::delete('tenants/{tenant}/users/{user}', [TenantUserController::class, 'destroy'])->name('tenants.users.destroy');
     });
@@ -128,6 +131,12 @@ Route::middleware(['auth', 'verified', 'role:owner,kasir'])->group(function () {
         Route::get('reports', [ReportController::class, 'index'])->name('reports.index');
         Route::get('reports/export/pdf/{type}', [ReportController::class, 'exportPdf'])->name('reports.export.pdf');
         Route::get('reports/export/excel/{type}', [ReportController::class, 'exportExcel'])->name('reports.export.excel');
+    });
+
+       // Pengeluaran operasional (sewa, es batu, dll) + master jenis pengeluarannya
+    Route::middleware('menu:expenses')->group(function () {
+        Route::resource('expenses', ExpenseController::class)->only(['index', 'store', 'update', 'destroy']);
+        Route::resource('expense-types', ExpenseTypeController::class)->only(['store', 'update', 'destroy']);
     });
 });
 
