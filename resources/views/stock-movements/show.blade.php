@@ -1,6 +1,6 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex items-center justify-between">
+        <div class="flex flex-wrap items-center justify-between gap-2">
             <div class="flex items-center gap-3">
                 <div class="w-1.5 h-7 rounded-full bg-[#D4A73C]"></div>
                 <h2 class="font-semibold text-xl text-[#1F2A24] leading-tight">Detail Riwayat Stok</h2>
@@ -13,7 +13,7 @@
     </x-slot>
 
     <div class="py-6">
-        <div class="max-w-lg mx-auto sm:px-6 lg:px-8">
+        <div class="max-w-lg mx-auto px-4 sm:px-6 lg:px-8">
             <div class="bg-white border border-[#E7E1D3] rounded-xl shadow-sm overflow-hidden">
 
                 <!-- Header: tipe & qty jadi hero -->
@@ -27,7 +27,7 @@
                             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v14m0 0l-6-6m6 6l6-6"/></svg>
                         @endif
                     </div>
-                    <div>
+                    <div class="min-w-0">
                         <p class="text-xs uppercase tracking-wide {{ $movement->type === 'in' ? 'text-[#2F6F4E]' : 'text-[#B5482E]' }}">
                             {{ $movement->type === 'in' ? 'Stok Masuk' : 'Stok Keluar' }}
                         </p>
@@ -42,16 +42,16 @@
 
                 <!-- Detail -->
                 <div class="px-6 py-5 space-y-3 text-sm">
-                    <div class="flex justify-between">
-                        <span class="text-[#8A8272]">Jenis Item</span>
+                    <div class="flex justify-between gap-3">
+                        <span class="text-[#8A8272] shrink-0">Jenis Item</span>
                         @if ($source === 'ingredient')
                             <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-[#F5EEDD] text-[#8A6A2C]">Bahan Baku</span>
                         @else
                             <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-[#EFF1EC] text-[#5B5647]">Produk</span>
                         @endif
                     </div>
-                    <div class="flex justify-between items-start">
-                        <span class="text-[#8A8272]">{{ $source === 'ingredient' ? 'Bahan Baku' : 'Produk' }}</span>
+                    <div class="flex justify-between items-start gap-3">
+                        <span class="text-[#8A8272] shrink-0">{{ $source === 'ingredient' ? 'Bahan Baku' : 'Produk' }}</span>
                         <span class="text-right font-medium text-[#1F2A24]">
                             @if ($source === 'ingredient')
                                 {{ $movement->ingredient->name }}
@@ -63,9 +63,9 @@
                             @endif
                         </span>
                     </div>
-                    <div class="flex justify-between">
-                        <span class="text-[#8A8272]">Stok saat ini</span>
-                        <span class="font-medium text-[#1F2A24]">
+                    <div class="flex justify-between gap-3">
+                        <span class="text-[#8A8272] shrink-0">Stok saat ini</span>
+                        <span class="font-medium text-[#1F2A24] text-right">
                             @if ($source === 'ingredient')
                                 {{ $movement->ingredient->stock }} {{ $movement->ingredient->unit }}
                             @else
@@ -73,17 +73,17 @@
                             @endif
                         </span>
                     </div>
-                    <div class="flex justify-between">
-                        <span class="text-[#8A8272]">Catatan</span>
-                        <span class="text-right text-[#1F2A24] max-w-[220px]">{{ $movement->note ?? '—' }}</span>
+                    <div class="flex justify-between gap-3">
+                        <span class="text-[#8A8272] shrink-0">Catatan</span>
+                        <span class="text-right text-[#1F2A24] max-w-[220px] break-words">{{ $movement->note ?? '—' }}</span>
                     </div>
-                    <div class="pt-3 border-t border-[#F0ECE0] flex justify-between">
-                        <span class="text-[#8A8272]">Dicatat oleh</span>
-                        <span class="font-medium text-[#1F2A24]">{{ $movement->user->name }}</span>
+                    <div class="pt-3 border-t border-[#F0ECE0] flex justify-between gap-3">
+                        <span class="text-[#8A8272] shrink-0">Dicatat oleh</span>
+                        <span class="font-medium text-[#1F2A24] text-right">{{ $movement->user->name }}</span>
                     </div>
-                    <div class="flex justify-between">
-                        <span class="text-[#8A8272]">Tanggal</span>
-                        <span class="text-[#1F2A24]">{{ $movement->created_at->format('d/m/Y H:i') }}</span>
+                    <div class="flex justify-between gap-3">
+                        <span class="text-[#8A8272] shrink-0">Tanggal</span>
+                        <span class="text-[#1F2A24] text-right">{{ $movement->created_at->format('d/m/Y H:i') }}</span>
                     </div>
                 </div>
 

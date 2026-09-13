@@ -7,7 +7,7 @@
     </x-slot>
 
     <div class="py-6">
-        <div class="max-w-6xl mx-auto sm:px-6 lg:px-8 space-y-4">
+        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 space-y-4">
 
             @if (session('success'))
                 <div class="p-4 bg-[#EAF3EE] border border-[#CFE6DA] text-[#2F6F4E] rounded-lg text-sm">{{ session('success') }}</div>
@@ -51,7 +51,7 @@
                     Belum ada bahan baku.
                 </div>
             @else
-                <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                     @foreach ($ingredients as $ingredient)
                         <div class="bg-white rounded-xl ring-1 {{ $ingredient->isLowStock() ? 'ring-[#F0CFC4]' : 'ring-[#E7E1D3]' }} shadow-sm p-5 flex flex-col gap-4">
                             <div class="flex items-start justify-between gap-2">
@@ -226,7 +226,7 @@
                 @if (old('form_type') === 'create') @error('unit') <p class="text-red-600 text-sm mt-1">{{ $message }}</p> @enderror @endif
             </div>
 
-            <div class="grid grid-cols-2 gap-4 mb-6">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
                 <div>
                     <label class="block text-sm font-medium text-[#1F2A24] mb-1.5">Stok Awal</label>
                     <input type="number" step="0.01" name="stock" value="{{ old('form_type') === 'create' ? old('stock', 0) : 0 }}"

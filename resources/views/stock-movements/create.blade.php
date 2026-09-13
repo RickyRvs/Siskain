@@ -7,7 +7,7 @@
     </x-slot>
 
     <div class="py-6">
-        <div class="max-w-lg mx-auto sm:px-6 lg:px-8">
+        <div class="max-w-lg mx-auto px-4 sm:px-6 lg:px-8">
             <div class="bg-white border border-[#E7E1D3] rounded-xl shadow-sm">
                 <div class="px-6 py-4 border-b border-[#E7E1D3]">
                     <p class="text-sm text-[#5B5647]">Catat stok masuk (pembelian, retur) atau stok keluar (kerusakan, hilang) di luar transaksi penjualan — baik untuk produk maupun bahan baku.</p>
@@ -165,8 +165,8 @@
                                class="w-full text-sm border-[#DDD5C2] rounded-lg shadow-sm focus:border-[#D4A73C] focus:ring-[#D4A73C]">
                     </div>
 
-                    <div class="flex justify-end gap-2">
-                        <a href="{{ route('stock-movements.index') }}" class="px-4 py-2 text-sm font-medium rounded-lg border border-[#DDD5C2] text-[#5B5647] hover:bg-[#F7F4EC]">Batal</a>
+                    <div class="flex flex-col sm:flex-row justify-end gap-2">
+                        <a href="{{ route('stock-movements.index') }}" class="px-4 py-2 text-sm font-medium rounded-lg border border-[#DDD5C2] text-[#5B5647] hover:bg-[#F7F4EC] text-center">Batal</a>
                         <button type="submit" class="px-4 py-2 text-sm font-medium rounded-lg bg-[#1F2A24] text-white hover:bg-[#16201B]">Simpan</button>
                     </div>
                 </form>

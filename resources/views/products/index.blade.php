@@ -4,7 +4,7 @@
     </x-slot>
 
     <div class="py-6">
-        <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
             @if (session('success'))
                 <div class="mb-4 p-4 bg-[#EAF3EE] text-[#2F6F4E] rounded-lg">{{ session('success') }}</div>
@@ -27,26 +27,28 @@
             </div>
 
             {{-- Filter --}}
-            <form method="GET" class="mb-5 flex flex-wrap gap-2 items-center bg-white ring-1 ring-[#E7E1D3] rounded-xl p-4">
-                <input type="text" name="search" value="{{ request('search') }}" placeholder="Cari produk..." class="w-full sm:w-auto rounded-lg border-[#E7E1D3] shadow-sm focus:border-[#D4A73C] focus:ring-[#D4A73C] text-sm">
+            <form method="GET" class="mb-5 flex flex-col sm:flex-row sm:flex-wrap gap-3 sm:items-center bg-white ring-1 ring-[#E7E1D3] rounded-xl p-4">
+                <input type="text" name="search" value="{{ request('search') }}" placeholder="Cari produk..." class="w-full sm:w-56 rounded-lg border-[#E7E1D3] shadow-sm focus:border-[#D4A73C] focus:ring-[#D4A73C] text-sm">
 
-                <select name="category_id" onchange="this.form.submit()" class="w-full sm:w-auto rounded-lg border-[#E7E1D3] shadow-sm focus:border-[#D4A73C] focus:ring-[#D4A73C] text-sm">
+                <select name="category_id" onchange="this.form.submit()" class="w-full sm:w-48 rounded-lg border-[#E7E1D3] shadow-sm focus:border-[#D4A73C] focus:ring-[#D4A73C] text-sm">
                     <option value="">Semua Kategori</option>
                     @foreach ($categories as $category)
                         <option value="{{ $category->id }}" {{ request('category_id') == $category->id ? 'selected' : '' }}>{{ $category->name }}</option>
                     @endforeach
                 </select>
 
-                <label class="flex items-center gap-1.5 text-sm text-[#1F2A24]">
+                <label class="flex items-center gap-1.5 text-sm text-[#1F2A24] shrink-0">
                     <input type="checkbox" name="low_stock" value="1" {{ request('low_stock') ? 'checked' : '' }} onchange="this.form.submit()" class="rounded border-[#E7E1D3] text-[#D4A73C] focus:ring-[#D4A73C]">
                     Stok menipis
                 </label>
 
-                <button type="submit" class="w-full sm:w-auto px-4 py-2 bg-[#F6F3EC] text-[#1F2A24] rounded-lg border border-[#E7E1D3] hover:bg-[#EFEAE0] transition text-sm">Cari</button>
+                <div class="flex items-center gap-3 w-full sm:w-auto">
+                    <button type="submit" class="flex-1 sm:flex-none px-4 py-2 bg-[#F6F3EC] text-[#1F2A24] rounded-lg border border-[#E7E1D3] hover:bg-[#EFEAE0] transition text-sm">Cari</button>
 
-                @if (request()->anyFilled(['search', 'category_id', 'low_stock']))
-                    <a href="{{ route('products.index') }}" class="text-sm text-[#8A8272] hover:underline">Reset</a>
-                @endif
+                    @if (request()->anyFilled(['search', 'category_id', 'low_stock']))
+                        <a href="{{ route('products.index') }}" class="text-sm text-[#8A8272] hover:underline shrink-0">Reset</a>
+                    @endif
+                </div>
 
                 <button
                     type="button"
@@ -112,22 +114,22 @@
                                 @endif
 
                                 <div class="mt-2 pt-2 border-t border-[#E7E1D3] flex items-center justify-between text-xs">
-                                    <div class="space-x-2">
+                                    <div class="flex items-center gap-3">
                                         @if ($product->has_variant)
-                                            <a href="{{ route('products.variants.index', $product) }}" class="text-[#B5842A] hover:underline">Varian</a>
+                                            <a href="{{ route('products.variants.index', $product) }}" class="text-[#B5842A] hover:underline py-1">Varian</a>
                                         @endif
                                         <button
                                             type="button"
                                             x-data
                                             @click="$dispatch('open-modal', 'edit-product-{{ $product->id }}')"
-                                            class="text-[#1B6E6E] hover:underline"
+                                            class="text-[#1B6E6E] hover:underline py-1"
                                         >
                                             Edit
                                         </button>
                                     </div>
                                     <form action="{{ route('products.destroy', $product) }}" method="POST" onsubmit="return confirm('Hapus produk ini?')">
                                         @csrf @method('DELETE')
-                                        <button type="submit" class="text-[#B5482E] hover:underline">Hapus</button>
+                                        <button type="submit" class="text-[#B5482E] hover:underline py-1">Hapus</button>
                                     </form>
                                 </div>
                             </div>
@@ -196,7 +198,7 @@
                                     <input type="file" name="photo" class="w-full text-sm text-[#1F2A24] file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:bg-[#F6F3EC] file:text-[#1F2A24] hover:file:bg-[#EFEAE0]">
                                 </div>
 
-                                <div class="grid grid-cols-2 gap-4 mb-4">
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
                                     <div>
                                         <label class="block text-sm font-medium text-[#1F2A24] mb-1">Harga Modal</label>
                                         <div class="relative">
@@ -356,7 +358,7 @@
                 @error('photo') <p class="text-[#B5482E] text-sm mt-1">{{ $message }}</p> @enderror
             </div>
 
-            <div class="grid grid-cols-2 gap-4 mb-4">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
                 <div>
                     <label class="block text-sm font-medium text-[#1F2A24] mb-1">Harga Modal</label>
                     <div class="relative">
@@ -405,7 +407,7 @@
                 @error('tracks_stock') <p class="text-[#B5482E] text-sm mt-1">{{ $message }}</p> @enderror
             </div>
 
-            <div class="grid grid-cols-2 gap-4 mb-6" x-show="tracksStock" x-cloak>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6" x-show="tracksStock" x-cloak>
                 <div>
                     <label class="block text-sm font-medium text-[#1F2A24] mb-1">Stok Awal</label>
                     <input type="number" name="stock" value="{{ old('stock', 0) }}" class="w-full rounded-lg border-[#E7E1D3] shadow-sm focus:border-[#D4A73C] focus:ring-[#D4A73C]" :required="tracksStock">

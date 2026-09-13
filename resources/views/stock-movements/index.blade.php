@@ -7,7 +7,7 @@
     </x-slot>
 
     <div class="py-6">
-        <div class="max-w-5xl mx-auto sm:px-6 lg:px-8 space-y-4">
+        <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 space-y-4">
 
             @if (session('success'))
                 <div class="p-4 bg-[#EAF3EE] border border-[#CFE6DA] text-[#2F6F4E] rounded-lg text-sm flex items-center gap-2">
@@ -47,14 +47,14 @@
             </div>
 
             <!-- Filter bar -->
-            <div class="bg-white rounded-xl ring-1 ring-[#E7E1D3] shadow-sm p-4 flex flex-wrap gap-3 items-center">
-                <form method="GET" class="flex flex-wrap gap-2 items-center flex-1">
-                    <select name="source_type" class="text-sm rounded-lg border-[#DDD5C2] shadow-sm focus:border-[#D4A73C] focus:ring-[#D4A73C]" onchange="this.form.submit()">
+            <div class="bg-white rounded-xl ring-1 ring-[#E7E1D3] shadow-sm p-4 flex flex-col lg:flex-row gap-3 lg:items-center">
+                <form method="GET" class="flex flex-col sm:flex-row sm:flex-wrap gap-2 sm:items-center flex-1 min-w-0">
+                    <select name="source_type" class="w-full sm:w-auto text-sm rounded-lg border-[#DDD5C2] shadow-sm focus:border-[#D4A73C] focus:ring-[#D4A73C]" onchange="this.form.submit()">
                         <option value="">Semua Jenis Item</option>
                         <option value="product" {{ request('source_type') === 'product' ? 'selected' : '' }}>Produk</option>
                         <option value="ingredient" {{ request('source_type') === 'ingredient' ? 'selected' : '' }}>Bahan Baku</option>
                     </select>
-                    <select name="item" class="text-sm rounded-lg border-[#DDD5C2] shadow-sm focus:border-[#D4A73C] focus:ring-[#D4A73C]" onchange="this.form.submit()">
+                    <select name="item" class="w-full sm:w-auto text-sm rounded-lg border-[#DDD5C2] shadow-sm focus:border-[#D4A73C] focus:ring-[#D4A73C]" onchange="this.form.submit()">
                         <option value="">Semua Item</option>
                         <optgroup label="Produk">
                             @foreach ($products as $product)
@@ -67,13 +67,13 @@
                             @endforeach
                         </optgroup>
                     </select>
-                    <select name="type" class="text-sm rounded-lg border-[#DDD5C2] shadow-sm focus:border-[#D4A73C] focus:ring-[#D4A73C]" onchange="this.form.submit()">
+                    <select name="type" class="w-full sm:w-auto text-sm rounded-lg border-[#DDD5C2] shadow-sm focus:border-[#D4A73C] focus:ring-[#D4A73C]" onchange="this.form.submit()">
                         <option value="">Semua Tipe</option>
                         <option value="in" {{ request('type') === 'in' ? 'selected' : '' }}>Masuk</option>
                         <option value="out" {{ request('type') === 'out' ? 'selected' : '' }}>Keluar</option>
                     </select>
                     <input type="date" name="date" value="{{ request('date') }}"
-                           class="text-sm rounded-lg border-[#DDD5C2] shadow-sm focus:border-[#D4A73C] focus:ring-[#D4A73C]" onchange="this.form.submit()">
+                           class="w-full sm:w-auto text-sm rounded-lg border-[#DDD5C2] shadow-sm focus:border-[#D4A73C] focus:ring-[#D4A73C]" onchange="this.form.submit()">
                     @if (request('source_type') || request('item') || request('type') || request('date'))
                         <a href="{{ route('stock-movements.index') }}" class="text-sm text-[#8A8272] hover:text-[#1F2A24] inline-flex items-center gap-1">
                             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
@@ -82,7 +82,7 @@
                     @endif
                 </form>
                 <a href="{{ route('stock-movements.create') }}"
-                   class="inline-flex items-center gap-1.5 px-4 py-2 bg-[#D4A73C] text-[#0F2E2B] text-sm font-semibold rounded-lg hover:bg-[#E0B559] transition">
+                   class="inline-flex items-center justify-center gap-1.5 px-4 py-2 bg-[#D4A73C] text-[#0F2E2B] text-sm font-semibold rounded-lg hover:bg-[#E0B559] transition w-full lg:w-auto">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
                     Penyesuaian Stok
                 </a>
@@ -138,7 +138,7 @@
                                     </td>
                                     <td class="px-6 py-4 text-sm text-[#5B5647] max-w-[180px] truncate" title="{{ $movement->note }}">{{ $movement->note ?? '—' }}</td>
                                     <td class="px-6 py-4 text-sm text-[#8A8272]">{{ $movement->user_name }}</td>
-<td class="px-6 py-4 text-sm text-[#8A8272]">{{ \Illuminate\Support\Carbon::parse($movement->created_at)->translatedFormat('d M Y, H:i') }}</td>
+                                    <td class="px-6 py-4 text-sm text-[#8A8272]">{{ \Illuminate\Support\Carbon::parse($movement->created_at)->translatedFormat('d M Y, H:i') }}</td>
                                     <td class="px-6 py-4 text-right">
                                         <a href="{{ route('stock-movements.show', $movement->id) }}?source={{ $movement->source_type }}" class="inline-flex items-center gap-1 text-sm text-[#1B6E6E] hover:text-[#144F4F] font-medium">
                                             Detail
