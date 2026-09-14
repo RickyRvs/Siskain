@@ -73,6 +73,24 @@ class TransactionController extends Controller
         return view('transactions.create', compact('products', 'customers'));
     }
 
+    /**
+     * Query produk aktif buat katalog kasir. Dipakai bareng-bareng
+     * sama create() dan show() (pas mode "tambah item" ke invoice lama),
+     * biar daftar produknya konsisten di kedua tempat.
+     */
+    private function catalogProducts()
+    {
+        return Product::with(['variants', 'ingredients'])
+            ->active()
+            ->where(function ($q) {
+                $q->where('stock', '>', 0)
+                    ->orWhere('has_variant', true)
+                    ->orWhere('tracks_stock', false);
+            })
+            ->orderBy('name')
+            ->get();
+    }
+
     public function store(Request $request)
     {
         $validated = $request->validate([
@@ -311,7 +329,199 @@ class TransactionController extends Controller
     public function show(Transaction $transaction)
     {
         $transaction->load(['items.product', 'items.variant', 'user', 'customer', 'payments' => fn ($q) => $q->oldest()]);
-        return view('transactions.show', compact('transaction'));
+
+        // "Tambah Item" cuma dibolehin di hari yang sama transaksi dibuat &
+        // transaksinya belum dibatalkan. Di luar itu, ngedit invoice yang
+        // sudah lewat hari beresiko bikin rekap kas hari itu gak nyambung
+        // lagi sama fisik uangnya.
+        $canAddItems = $transaction->status !== 'batal' && $transaction->created_at->isToday();
+
+        $products = $canAddItems ? $this->catalogProducts() : collect();
+
+        return view('transactions.show', compact('transaction', 'canAddItems', 'products'));
+    }
+
+    /**
+     * Tambah item ke transaksi yang sudah ada (dipakai buat kasus customer
+     * pesan lagi setelah invoice pertama sudah lunas, di hari yang sama).
+     * Bukan bikin invoice baru — item baru nempel ke invoice yang sama,
+     * stok/bahan baku dipotong lagi, dan subtotal/total dihitung ulang.
+     */
+    public function addItems(Request $request, Transaction $transaction)
+    {
+        $validated = $request->validate([
+            'items' => 'required|array|min:1',
+            'items.*.product_id' => 'required|exists:products,id',
+            'items.*.product_variant_id' => 'nullable|exists:product_variants,id',
+            'items.*.qty' => 'required|integer|min:1',
+            'payment_method' => 'nullable|in:tunai,transfer,qris,lainnya',
+            'additional_paid_amount' => 'nullable|numeric|min:0',
+            'is_piutang' => 'nullable|boolean',
+        ]);
+
+        $merged = [];
+        foreach ($validated['items'] as $item) {
+            $key = $item['product_id'] . '-' . ($item['product_variant_id'] ?? '0');
+            if (isset($merged[$key])) {
+                $merged[$key]['qty'] += $item['qty'];
+            } else {
+                $merged[$key] = $item;
+            }
+        }
+        $items = array_values($merged);
+
+        try {
+            DB::transaction(function () use ($items, $validated, $transaction) {
+                // Lock baris transaksinya biar gak race sama request lain yang
+                // juga lagi nambah item / bayar piutang di invoice yang sama.
+                $transaction = Transaction::lockForUpdate()->findOrFail($transaction->id);
+
+                if ($transaction->status === 'batal') {
+                    throw new \RuntimeException('Transaksi ini sudah dibatalkan, tidak bisa ditambah item.');
+                }
+
+                if (!$transaction->created_at->isToday()) {
+                    throw new \RuntimeException('Item cuma bisa ditambahkan di hari yang sama transaksi dibuat.');
+                }
+
+                $addedSubtotal = 0;
+
+                foreach ($items as $item) {
+                    if (!empty($item['product_variant_id'])) {
+                        $variant = ProductVariant::lockForUpdate()->findOrFail($item['product_variant_id']);
+
+                        if ((int) $variant->product_id !== (int) $item['product_id']) {
+                            throw new \RuntimeException('Varian yang dipilih tidak sesuai dengan produknya.');
+                        }
+
+                        $parentActive = Product::where('id', $variant->product_id)->value('is_active');
+                        if (!$parentActive) {
+                            throw new \RuntimeException('Produk untuk varian ini sudah tidak dijual lagi.');
+                        }
+
+                        if ($variant->stock < $item['qty']) {
+                            throw new \RuntimeException("Stok varian {$variant->name} tidak mencukupi.");
+                        }
+
+                        $price = $variant->price_jual;
+                    } else {
+                        $product = Product::with('ingredients')->lockForUpdate()->findOrFail($item['product_id']);
+
+                        if ($product->has_variant) {
+                            throw new \RuntimeException("Produk {$product->name} punya varian, pilih variannya dulu.");
+                        }
+
+                        if (!$product->is_active) {
+                            throw new \RuntimeException("Produk {$product->name} sudah tidak dijual lagi.");
+                        }
+
+                        if ($product->tracks_stock && $product->stock < $item['qty']) {
+                            throw new \RuntimeException("Stok produk {$product->name} tidak mencukupi.");
+                        }
+
+                        foreach ($product->ingredients as $ingredient) {
+                            $needed = $ingredient->pivot->qty_used * $item['qty'];
+                            if ($ingredient->stock < $needed) {
+                                throw new \RuntimeException("Stok bahan {$ingredient->name} tidak mencukupi untuk {$product->name}.");
+                            }
+                        }
+
+                        $price = $product->price_jual;
+                    }
+
+                    $lineSubtotal = $price * $item['qty'];
+                    $addedSubtotal += $lineSubtotal;
+
+                    $transaction->items()->create([
+                        'product_id' => $item['product_id'],
+                        'product_variant_id' => $item['product_variant_id'] ?? null,
+                        'qty' => $item['qty'],
+                        'price' => $price,
+                        'subtotal' => $lineSubtotal,
+                    ]);
+
+                    if (!empty($item['product_variant_id'])) {
+                        $variant = ProductVariant::lockForUpdate()->find($item['product_variant_id']);
+                        $variant->decrement('stock', $item['qty']);
+                        StockMovement::create([
+                            'product_id' => $variant->product_id,
+                            'product_variant_id' => $variant->id,
+                            'type' => 'out',
+                            'qty' => $item['qty'],
+                            'note' => 'Tambahan item invoice ' . $transaction->invoice_number,
+                            'user_id' => auth()->id(),
+                        ]);
+                    } else {
+                        $product = Product::with('ingredients')->lockForUpdate()->find($item['product_id']);
+
+                        if ($product->tracks_stock) {
+                            $product->decrement('stock', $item['qty']);
+                            StockMovement::create([
+                                'product_id' => $product->id,
+                                'type' => 'out',
+                                'qty' => $item['qty'],
+                                'note' => 'Tambahan item invoice ' . $transaction->invoice_number,
+                                'user_id' => auth()->id(),
+                            ]);
+                        }
+
+                        foreach ($product->ingredients as $ingredient) {
+                            $needed = $ingredient->pivot->qty_used * $item['qty'];
+
+                            $ingredientLocked = Ingredient::lockForUpdate()->find($ingredient->id);
+                            $ingredientLocked->decrement('stock', $needed);
+
+                            IngredientStockMovement::create([
+                                'ingredient_id' => $ingredient->id,
+                                'type' => 'out',
+                                'qty' => $needed,
+                                'note' => 'Tambahan item invoice ' . $transaction->invoice_number . ' (' . $product->name . ')',
+                                'user_id' => auth()->id(),
+                            ]);
+                        }
+                    }
+                }
+
+                $oldPaidAmount = $transaction->paid_amount;
+
+                $newSubtotal = $transaction->subtotal + $addedSubtotal;
+                $newTotal = max(0, $newSubtotal - $transaction->discount + $transaction->tax + $transaction->additional_fee);
+
+                $additionalPaid = $validated['additional_paid_amount'] ?? 0;
+                $newPaidAmount = $oldPaidAmount + $additionalPaid;
+
+                // Sama kayak store(): kalau dibayar kurang dari total, otomatis piutang.
+                $isPiutang = !empty($validated['is_piutang']) || $newPaidAmount < $newTotal;
+                $status = $isPiutang ? 'piutang' : 'lunas';
+
+                $transaction->update([
+                    'subtotal' => $newSubtotal,
+                    'total' => $newTotal,
+                    'paid_amount' => $newPaidAmount,
+                    'change_amount' => max(0, $newPaidAmount - $newTotal),
+                    'status' => $status,
+                ]);
+
+                if ($additionalPaid > 0) {
+                    // Dicap ke sisa yang masih kurang biar riwayat pembayaran gak
+                    // pernah kelebihan dari total invoice, kembaliannya tetap
+                    // kehandle lewat change_amount di atas.
+                    $outstandingBefore = max(0, $newTotal - $oldPaidAmount);
+
+                    Payment::create([
+                        'transaction_id' => $transaction->id,
+                        'amount' => $outstandingBefore > 0 ? min($additionalPaid, $outstandingBefore) : $additionalPaid,
+                        'paid_at' => today(),
+                        'payment_method' => $validated['payment_method'] ?? $transaction->payment_method,
+                        'note' => 'Pembayaran tambahan item',
+                    ]);
+                }
+            });
+        } catch (\RuntimeException $e) {
+            return back()->with('error', $e->getMessage());
+        }
+
+        return redirect()->route('transactions.show', $transaction)->with('success', 'Item tambahan berhasil ditambahkan ke invoice ini.');
     }
 
     public function payPiutang(Request $request, Transaction $transaction)

@@ -153,13 +153,13 @@
                      style="display:none">
                     <div class="absolute inset-0 bg-[#1F2A24]/50" @click="cartOpen = false"></div>
 
-                    <div class="relative bg-white w-full h-full sm:h-auto sm:w-full sm:max-w-md sm:max-h-[88vh] sm:rounded-2xl sm:shadow-2xl flex flex-col"
+                    <div class="relative bg-white w-full h-full sm:h-auto sm:w-full sm:max-w-md sm:max-h-[92vh] sm:rounded-2xl sm:shadow-2xl flex flex-col"
                          x-transition:enter="transition ease-out duration-200"
                          x-transition:enter-start="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
                          x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100">
 
                         <!-- Header modal -->
-                        <div class="px-5 py-4 border-b border-[#F0ECE0] shrink-0 flex items-center justify-between">
+                        <div class="px-5 py-3 border-b border-[#F0ECE0] shrink-0 flex items-center justify-between">
                             <div>
                                 <h3 class="font-semibold text-[#1F2A24]">Keranjang &amp; Bayar</h3>
                                 <span class="text-xs font-medium text-[#B5842A] bg-[#FBF0DA] px-2 py-0.5 rounded-full" x-text="items.length + ' item'"></span>
@@ -170,7 +170,7 @@
                         </div>
 
                         <!-- Customer: sengaja di luar area scroll, biar dropdown-nya gak ke-clip sama overflow-y-auto di body -->
-                        <div class="px-5 pt-4 pb-3 border-b border-[#F0ECE0] shrink-0 relative" @click.outside="customerOpen = false">
+                        <div class="px-5 pt-3 pb-2.5 border-b border-[#F0ECE0] shrink-0 relative" @click.outside="customerOpen = false">
                             <label class="block text-xs text-[#8A8272] mb-1">Customer</label>
                             <div class="relative">
                                 <input type="text" x-model="customerName" autocomplete="off"
@@ -205,11 +205,10 @@
                                     </div>
                                 </div>
                             </div>
-                            <p class="text-[11px] text-[#8A8272] mt-1">Pilih dari daftar yang muncul, atau ketik nama baru bebas.</p>
                         </div>
 
                         <!-- Body: scrollable -->
-                        <div class="flex-1 overflow-y-auto">
+                        <div class="flex-1 overflow-y-auto min-h-[160px]">
                             <!-- Daftar item -->
                             <div class="px-5 mt-3 divide-y divide-[#F0ECE0]">
                                 <template x-for="(item, index) in items" :key="item.key">
@@ -256,7 +255,7 @@
                         </div>
 
                         <!-- Footer: total & pembayaran -->
-                        <div class="px-5 pt-4 pb-[calc(1rem+env(safe-area-inset-bottom))] border-t border-[#F0ECE0] bg-[#FAF8F2] space-y-3 shrink-0">
+                        <div class="px-5 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] border-t border-[#F0ECE0] bg-[#FAF8F2] space-y-2.5 shrink-0">
                             <div class="flex justify-between font-semibold text-[#1F2A24] text-base">
                                 <span>Total</span><span x-text="'Rp ' + formatRp(total)"></span>
                             </div>
@@ -269,11 +268,10 @@
                                     <option value="qris">QRIS</option>
                                     <option value="lainnya">Lainnya</option>
                                 </select>
-                                <p class="text-[11px] text-[#8A8272] mt-1">Semua metode dicatat manual — masukkan nominal yang benar-benar diterima kasir.</p>
                             </div>
 
                             <!-- Input dibayar + piutang, berlaku untuk semua metode bayar -->
-                            <div class="space-y-3">
+                            <div class="space-y-2.5">
                                 <div>
                                     <label class="block text-xs text-[#8A8272] mb-1">Dibayar</label>
                                     <div class="flex gap-2">

@@ -126,6 +126,11 @@ Route::middleware(['auth', 'verified', 'role:owner,kasir'])->group(function () {
     Route::middleware('menu:transactions')->group(function () {
         Route::resource('transactions', TransactionController::class)->only(['index', 'create', 'store', 'show']);
         Route::post('transactions/{transaction}/pay-piutang', [TransactionController::class, 'payPiutang'])->name('transactions.pay-piutang');
+
+        // Tambah item ke invoice yang sudah ada, khusus transaksi yang belum
+        // dibatalkan & masih di hari yang sama (lihat guard-nya di controller).
+        Route::post('transactions/{transaction}/add-items', [TransactionController::class, 'addItems'])->name('transactions.addItems');
+
         Route::patch('transactions/{transaction}/cancel', [TransactionController::class, 'cancel'])->name('transactions.cancel');
         Route::get('transactions/{transaction}/pdf', [TransactionController::class, 'downloadPdf'])->name('transactions.pdf');
     });

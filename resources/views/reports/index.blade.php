@@ -84,18 +84,10 @@
             </div>
 
             <!-- Baris ke-2: angka pendukung, lebih kecil -->
-            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 text-sm">
+            <div class="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4 text-sm">
                 <div class="bg-white rounded-lg ring-1 ring-[#E7E1D3] px-4 py-3">
                     <p class="text-[11px] text-[#8A8272] uppercase tracking-wide">Rata-rata / Transaksi</p>
                     <p class="font-semibold text-[#1F2A24] mt-0.5 truncate">Rp {{ number_format($summary['rata_rata_transaksi'], 0, ',', '.') }}</p>
-                </div>
-                <div class="bg-white rounded-lg ring-1 ring-[#E7E1D3] px-4 py-3">
-                    <p class="text-[11px] text-[#8A8272] uppercase tracking-wide">Diskon Diberikan</p>
-                    <p class="font-semibold text-[#1F2A24] mt-0.5 truncate">Rp {{ number_format($summary['diskon'], 0, ',', '.') }}</p>
-                </div>
-                <div class="bg-white rounded-lg ring-1 ring-[#E7E1D3] px-4 py-3">
-                    <p class="text-[11px] text-[#8A8272] uppercase tracking-wide">Pajak Terkumpul</p>
-                    <p class="font-semibold text-[#1F2A24] mt-0.5 truncate">Rp {{ number_format($summary['pajak'], 0, ',', '.') }}</p>
                 </div>
                 <div class="bg-white rounded-lg ring-1 ring-[#E7E1D3] px-4 py-3">
                     <p class="text-[11px] text-[#8A8272] uppercase tracking-wide">Piutang Sudah Dibayar</p>

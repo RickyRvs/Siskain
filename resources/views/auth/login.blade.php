@@ -1,17 +1,30 @@
 <x-guest-layout>
-    <div class="mb-8">
-        <h2 class="text-2xl font-bold text-[#16231D]">Masuk</h2>
+    <!-- Branding -->
+    <div class="flex items-center gap-3 mb-8">
+        <div class="w-11 h-11 sm:w-12 sm:h-12 shrink-0 rounded-xl bg-[#D4A73C] flex items-center justify-center shadow-sm">
+            <span class="text-lg sm:text-xl font-bold text-[#16231D]">S</span>
+        </div>
+        <div class="min-w-0">
+            <p class="text-lg sm:text-xl font-bold text-[#16231D] leading-tight">Siskain</p>
+            <p class="text-xs text-[#8A8272] leading-tight">Sistem Kasir &amp; Inventori</p>
+        </div>
+    </div>
+
+    <div class="mb-6 sm:mb-8">
+        <h2 class="text-xl sm:text-2xl font-bold text-[#16231D]">Masuk</h2>
         <p class="text-sm text-[#8A8272] mt-1.5">Login dulu buat lanjut ke kasir dan stok kamu.</p>
     </div>
 
     <x-auth-session-status class="mb-6" :status="session('status')" />
 
-    <form method="POST" action="{{ route('login') }}" class="space-y-6">
+    <form method="POST" action="{{ route('login') }}" class="space-y-5 sm:space-y-6">
         @csrf
 
         <div>
             <x-input-label for="username" :value="__('Username')" />
-            <x-text-input id="username" class="block mt-2 w-full" type="text" name="username" :value="old('username')"
+            <x-text-input id="username"
+                           class="block mt-2 w-full text-base py-2.5 sm:text-sm sm:py-2"
+                           type="text" name="username" :value="old('username')"
                            placeholder="username kamu" required autofocus autocomplete="username" />
             <x-input-error :messages="$errors->get('username')" class="mt-2" />
         </div>
@@ -19,12 +32,14 @@
         <div x-data="{ showPassword: false }">
             <x-input-label for="password" :value="__('Password')" />
             <div class="relative mt-2">
-                <x-text-input id="password" class="block w-full pr-10" :type="'password'" x-bind:type="showPassword ? 'text' : 'password'" name="password"
+                <x-text-input id="password"
+                               class="block w-full pr-11 text-base py-2.5 sm:text-sm sm:py-2"
+                               :type="'password'" x-bind:type="showPassword ? 'text' : 'password'" name="password"
                                placeholder="Masukkan password" required autocomplete="current-password" />
                 <button
                     type="button"
                     @click="showPassword = !showPassword"
-                    class="absolute inset-y-0 right-0 flex items-center px-3 text-[#8A8272] hover:text-[#1F2A24]"
+                    class="absolute inset-y-0 right-0 flex items-center justify-center w-11 text-[#8A8272] hover:text-[#1F2A24] active:scale-90 transition"
                     :aria-label="showPassword ? 'Sembunyikan password' : 'Lihat password'"
                 >
                     <svg x-show="!showPassword" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
@@ -39,7 +54,7 @@
             <x-input-error :messages="$errors->get('password')" class="mt-2" />
         </div>
 
-        <div class="flex items-center justify-between">
+        <div class="flex flex-col xs:flex-row xs:items-center xs:justify-between gap-3 xs:gap-2">
             <label for="remember_me" class="inline-flex items-center gap-2 cursor-pointer select-none">
                 <input id="remember_me" type="checkbox" name="remember"
                        class="rounded border-[#DDD5C2] text-[#16231D] shadow-sm focus:ring-[#D4A73C]">
@@ -53,7 +68,7 @@
             @endif
         </div>
 
-        <x-primary-button class="w-full justify-center py-3">
+        <x-primary-button class="w-full justify-center py-3 text-base sm:text-sm">
             Masuk
         </x-primary-button>
     </form>

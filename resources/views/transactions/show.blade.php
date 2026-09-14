@@ -12,7 +12,26 @@
         </div>
     </x-slot>
 
-    <div class="py-4 sm:py-6 print:py-0">
+    <div class="py-4 sm:py-6 print:py-0"
+         @if ($canAddItems)
+         x-data="addItemsForm({
+             products: {{ $products->map(fn($p) => [
+                 'id' => $p->id,
+                 'name' => $p->name,
+                 'price' => (float) $p->price_jual,
+                 'stock' => (int) $p->stock,
+                 'has_variant' => (bool) $p->has_variant,
+                 'tracks_stock' => (bool) $p->tracks_stock,
+                 'photo' => $p->photo ? \Storage::url($p->photo) : null,
+                 'variants' => $p->variants->map(fn($v) => [
+                     'id' => $v->id,
+                     'name' => $v->name,
+                     'price' => (float) $v->price_jual,
+                     'stock' => (int) $v->stock,
+                 ])->values(),
+             ])->values() }}
+         })"
+         @endif>
         <div class="max-w-2xl mx-auto px-3 sm:px-6 lg:px-8 print:px-0 print:max-w-none space-y-3 sm:space-y-4 print:space-y-0">
 
             @if (session('success'))
@@ -204,6 +223,17 @@
 
             <!-- Aksi -->
             <div class="space-y-2 print:hidden">
+                @if ($canAddItems)
+                    <button type="button" @click="addOpen = true"
+                            class="w-full inline-flex items-center justify-center gap-1.5 px-4 py-2.5 bg-[#1F2A24] text-white text-sm font-medium rounded-lg hover:bg-[#16201B] transition">
+                        <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                        </svg>
+                        Tambah Item ke Invoice Ini
+                    </button>
+                    <p class="text-[11px] text-[#8A8272] -mt-1">Customer pesan lagi? Tambah item ini nempel ke invoice yang sama, selama masih hari ini.</p>
+                @endif
+
                 <div class="flex flex-col sm:flex-row sm:flex-wrap gap-2">
                     <button onclick="window.print()"
                             class="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-4 py-2.5 sm:py-2 bg-white ring-1 ring-[#E7E1D3] text-[#1F2A24] text-sm font-medium rounded-lg hover:bg-[#F6F3EC] transition">
@@ -263,6 +293,256 @@
                     </div>
                 @endif
             </div>
+
+            @if ($canAddItems)
+                <!-- ==================== MODAL TAMBAH ITEM ==================== -->
+                <div x-show="addOpen" x-cloak
+                     class="fixed inset-0 z-[70] flex sm:items-center sm:justify-center"
+                     style="display:none">
+                    <div class="absolute inset-0 bg-[#1F2A24]/50" @click="addOpen = false"></div>
+
+                    <form action="{{ route('transactions.addItems', $transaction) }}" method="POST" @submit="beforeSubmit"
+                          class="relative bg-white w-full h-full sm:h-auto sm:w-full sm:max-w-md sm:max-h-[88vh] sm:rounded-2xl sm:shadow-2xl flex flex-col">
+                        @csrf
+
+                        <template x-for="(item, index) in items" :key="item.key">
+                            <span>
+                                <input type="hidden" :name="'items['+index+'][product_id]'" :value="item.product_id">
+                                <input type="hidden" :name="'items['+index+'][product_variant_id]'" :value="item.product_variant_id">
+                                <input type="hidden" :name="'items['+index+'][qty]'" :value="item.qty">
+                            </span>
+                        </template>
+                        <input type="hidden" name="payment_method" x-model="paymentMethod">
+                        <input type="hidden" name="additional_paid_amount" :value="additionalPaid">
+                        <input type="hidden" name="is_piutang" :value="isPiutang ? 1 : 0">
+
+                        <!-- Header -->
+                        <div class="px-5 py-4 border-b border-[#F0ECE0] shrink-0 flex items-center justify-between">
+                            <div>
+                                <h3 class="font-semibold text-[#1F2A24]">Tambah Item</h3>
+                                <p class="text-xs text-[#8A8272]">Invoice {{ $transaction->invoice_number }}</p>
+                            </div>
+                            <button type="button" @click="addOpen = false" class="text-[#8A8272] hover:text-[#1F2A24] p-1">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                            </button>
+                        </div>
+
+                        <!-- Search -->
+                        <div class="px-5 pt-3 pb-2 shrink-0">
+                            <div class="relative">
+                                <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#B0A98F]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.35-4.35M17 10a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                </svg>
+                                <input type="text" x-model="search" placeholder="Cari produk..."
+                                       class="w-full pl-9 pr-3 py-2 text-sm border-[#DDD5C2] rounded-lg shadow-sm focus:border-[#D4A73C] focus:ring-[#D4A73C]">
+                            </div>
+                        </div>
+
+                        <!-- Body: scrollable -->
+                        <div class="flex-1 overflow-y-auto px-5">
+                            <!-- Grid produk -->
+                            <div class="grid grid-cols-3 gap-2 pb-3">
+                                <template x-for="p in filteredProducts()" :key="p.id">
+                                    <button type="button" @click="addToCart(p)" :disabled="p.tracks_stock && p.stock <= 0 && !p.has_variant"
+                                            class="relative text-left bg-white rounded-lg ring-1 ring-[#E7E1D3] p-2 hover:ring-[#D4A73C] active:scale-95 transition disabled:opacity-40 disabled:cursor-not-allowed">
+                                        <span x-show="qtyInCart(p.id) > 0" x-cloak
+                                              class="absolute top-1 right-1 min-w-[16px] h-4 px-1 rounded-full bg-[#D4A73C] text-[#1F2A24] text-[10px] font-bold flex items-center justify-center"
+                                              x-text="qtyInCart(p.id)"></span>
+                                        <p class="text-xs font-medium text-[#1F2A24] leading-snug line-clamp-2 min-h-[2em]" x-text="p.name"></p>
+                                        <p class="text-xs font-semibold text-[#5B5647] mt-1" x-text="'Rp ' + formatRp(p.price)"></p>
+                                    </button>
+                                </template>
+                                <template x-if="filteredProducts().length === 0">
+                                    <p class="col-span-3 py-6 text-center text-xs text-[#B0A98F]">Produk tidak ditemukan.</p>
+                                </template>
+                            </div>
+
+                            <!-- Keranjang tambahan -->
+                            <div class="border-t border-dashed border-[#E7E1D3] pt-2 pb-3" x-show="items.length > 0" x-cloak>
+                                <p class="text-xs font-medium text-[#8A8272] uppercase tracking-wide mb-1.5">Item Tambahan</p>
+                                <div class="divide-y divide-[#F0ECE0]">
+                                    <template x-for="(item, index) in items" :key="item.key">
+                                        <div class="py-2 flex items-center gap-2">
+                                            <div class="flex-1 min-w-0">
+                                                <p class="text-sm text-[#1F2A24] truncate" x-text="item.name"></p>
+                                                <p class="text-xs text-[#8A8272]" x-show="item.variant_name" x-text="item.variant_name"></p>
+                                            </div>
+                                            <button type="button" @click="changeQty(index, -1)"
+                                                    class="w-6 h-6 flex items-center justify-center rounded-full border border-[#DDD5C2] text-[#5B5647] hover:bg-[#F6F3EC]">-</button>
+                                            <span class="w-5 text-center text-sm tabular-nums" x-text="item.qty"></span>
+                                            <button type="button" @click="changeQty(index, 1)"
+                                                    class="w-6 h-6 flex items-center justify-center rounded-full border border-[#DDD5C2] text-[#5B5647] hover:bg-[#F6F3EC]">+</button>
+                                            <span class="text-sm font-medium text-[#1F2A24] w-20 text-right" x-text="'Rp ' + formatRp(item.price * item.qty)"></span>
+                                        </div>
+                                    </template>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Footer -->
+                        <div class="px-5 pt-3 pb-[calc(1rem+env(safe-area-inset-bottom))] border-t border-[#F0ECE0] bg-[#FAF8F2] space-y-3 shrink-0">
+                            <div class="flex justify-between text-sm text-[#8A8272]">
+                                <span>Total tambahan</span><span x-text="'Rp ' + formatRp(addedTotal)"></span>
+                            </div>
+                            <div class="flex justify-between font-semibold text-[#1F2A24]">
+                                <span>Total invoice baru</span><span x-text="'Rp ' + formatRp({{ $transaction->total }} + addedTotal)"></span>
+                            </div>
+
+                            <div>
+                                <label class="block text-xs text-[#8A8272] mb-1">Tambahan Bayar (opsional)</label>
+                                <div class="flex gap-2">
+                                    <select x-model="paymentMethod" class="text-sm border-[#DDD5C2] rounded-md shadow-sm focus:border-[#D4A73C] focus:ring-[#D4A73C]">
+                                        <option value="tunai">Tunai</option>
+                                        <option value="transfer">Transfer</option>
+                                        <option value="qris">QRIS</option>
+                                        <option value="lainnya">Lainnya</option>
+                                    </select>
+                                    <div class="relative flex-1">
+                                        <span class="absolute left-2 top-1/2 -translate-y-1/2 text-[10px] text-[#8A8272] pointer-events-none">Rp</span>
+                                        <input type="text" inputmode="numeric" x-model="additionalPaidDisplay"
+                                               @input="additionalPaid = unformatRp($event.target.value); additionalPaidDisplay = formatRp(additionalPaid)"
+                                               placeholder="0"
+                                               class="w-full pl-7 text-sm border-[#DDD5C2] rounded-md shadow-sm focus:border-[#D4A73C] focus:ring-[#D4A73C]">
+                                    </div>
+                                    <button type="button" @click="additionalPaid = addedTotal; additionalPaidDisplay = formatRp(addedTotal)"
+                                            class="shrink-0 px-2.5 text-xs font-medium text-[#1F2A24] bg-white ring-1 ring-[#DDD5C2] rounded-md hover:bg-[#F6F3EC]">
+                                        Pas
+                                    </button>
+                                </div>
+                                <p class="text-[11px] text-[#8A8272] mt-1">
+                                    Kosongkan / isi kurang dari total tambahan kalau item ini mau dicatat sebagai piutang.
+                                </p>
+                            </div>
+
+                            <button type="submit" :disabled="items.length === 0 || submitting"
+                                    class="w-full py-3 rounded-lg bg-[#1F2A24] text-white font-medium hover:bg-[#16201B] disabled:opacity-40 disabled:cursor-not-allowed transition">
+                                <span x-show="!submitting" x-text="'Simpan Item Tambahan — Rp ' + formatRp(addedTotal)"></span>
+                                <span x-show="submitting" x-cloak>Memproses...</span>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- ==================== MODAL PILIH VARIAN (item tambahan) ==================== -->
+                <div x-show="variantPicker.product" x-cloak
+                     class="fixed inset-0 z-[80] flex items-center justify-center p-4"
+                     style="display: none;">
+                    <div class="absolute inset-0 bg-[#1F2A24]/50" @click="variantPicker.product = null"></div>
+                    <div class="relative bg-white rounded-xl shadow-lg w-full max-w-sm p-5" x-show="variantPicker.product">
+                        <h4 class="font-semibold text-[#1F2A24] mb-1" x-text="variantPicker.product?.name"></h4>
+                        <p class="text-xs text-[#8A8272] mb-3">Pilih varian</p>
+                        <div class="space-y-2 max-h-72 overflow-y-auto">
+                            <template x-for="v in (variantPicker.product?.variants || [])" :key="v.id">
+                                <button type="button" @click="pickVariant(v)" :disabled="v.stock <= 0"
+                                        class="w-full flex items-center justify-between px-3.5 py-2.5 rounded-lg border border-[#E7E1D3] hover:border-[#D4A73C] hover:bg-[#FAF8F2] disabled:opacity-40 disabled:cursor-not-allowed text-left">
+                                    <span class="text-sm text-[#1F2A24]" x-text="v.name"></span>
+                                    <span class="text-right">
+                                        <span class="block text-sm font-medium text-[#1F2A24]" x-text="'Rp ' + formatRp(v.price)"></span>
+                                        <span class="block text-[11px] text-[#8A8272]" x-text="v.stock > 0 ? 'stok ' + v.stock : 'habis'"></span>
+                                    </span>
+                                </button>
+                            </template>
+                        </div>
+                        <button type="button" @click="variantPicker.product = null" class="mt-4 w-full py-2 text-sm text-[#8A8272] hover:text-[#1F2A24]">Batal</button>
+                    </div>
+                </div>
+            @endif
         </div>
     </div>
+
+    @if ($canAddItems)
+        <script>
+            function addItemsForm({ products }) {
+                return {
+                    products,
+                    items: [],
+                    search: '',
+                    addOpen: false,
+                    paymentMethod: '{{ $transaction->payment_method }}',
+                    additionalPaid: 0,
+                    additionalPaidDisplay: '0',
+                    isPiutang: false,
+                    submitting: false,
+                    variantPicker: { product: null },
+
+                    get addedTotal() {
+                        return this.items.reduce((sum, item) => sum + (item.price * item.qty || 0), 0);
+                    },
+
+                    filteredProducts() {
+                        const q = this.search.trim().toLowerCase();
+                        if (!q) return this.products;
+                        return this.products.filter(p => p.name.toLowerCase().includes(q));
+                    },
+
+                    qtyInCart(productId) {
+                        return this.items.filter(i => i.product_id === productId).reduce((sum, i) => sum + i.qty, 0);
+                    },
+
+                    addToCart(product) {
+                        if (product.has_variant && product.variants.length > 0) {
+                            this.variantPicker.product = product;
+                            return;
+                        }
+                        this.upsertItem(product, null);
+                    },
+
+                    pickVariant(variant) {
+                        this.upsertItem(this.variantPicker.product, variant);
+                        this.variantPicker.product = null;
+                    },
+
+                    upsertItem(product, variant) {
+                        const key = product.id + '-' + (variant ? variant.id : '0');
+                        const existing = this.items.find(i => i.key === key);
+                        const stock = variant ? variant.stock : product.stock;
+                        const tracksStock = variant ? true : product.tracks_stock;
+
+                        if (existing) {
+                            if (!tracksStock || stock <= 0 || existing.qty < stock) existing.qty++;
+                        } else {
+                            this.items.push({
+                                key,
+                                product_id: product.id,
+                                product_variant_id: variant ? variant.id : '',
+                                name: product.name,
+                                variant_name: variant ? variant.name : '',
+                                price: variant ? variant.price : product.price,
+                                stock: tracksStock ? stock : 0,
+                                qty: 1,
+                            });
+                        }
+                    },
+
+                    changeQty(index, delta) {
+                        const item = this.items[index];
+                        const next = item.qty + delta;
+                        if (next < 1) {
+                            this.items.splice(index, 1);
+                            return;
+                        }
+                        if (item.stock > 0 && next > item.stock) return;
+                        item.qty = next;
+                    },
+
+                    formatRp(value) {
+                        return new Intl.NumberFormat('id-ID').format(value || 0);
+                    },
+
+                    unformatRp(value) {
+                        const digits = String(value).replace(/\D/g, '');
+                        return digits ? parseInt(digits, 10) : 0;
+                    },
+
+                    beforeSubmit(e) {
+                        if (this.items.length === 0) {
+                            e.preventDefault();
+                            return;
+                        }
+                        this.submitting = true;
+                    },
+                };
+            }
+        </script>
+    @endif
 </x-app-layout>
