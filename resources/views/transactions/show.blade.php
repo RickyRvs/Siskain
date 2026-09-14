@@ -73,7 +73,7 @@
                 <!-- Kasir & customer -->
                 <div class="px-4 sm:px-6 py-3 sm:py-4 print:px-4 print:py-2 flex flex-col xs:flex-row flex-wrap justify-between gap-1 sm:gap-2 text-sm print:text-[11px] border-b border-dashed border-[#E7E1D3] print:border-black">
                     <p class="text-[#8A8272] print:text-black">Kasir <span class="text-[#1F2A24] font-medium">{{ $transaction->user->name }}</span></p>
-                    <p class="text-[#8A8272] print:text-black">Customer <span class="text-[#1F2A24] font-medium">{{ $transaction->customer->name ?? 'Umum' }}</span></p>
+                    <p class="text-[#8A8272] print:text-black">Customer <span class="text-[#1F2A24] font-medium">{{ $transaction->displayCustomerName() }}</span></p>
                 </div>
 
                 <!-- Items -->

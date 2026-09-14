@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Traits\BelongsToTenant;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -21,6 +22,7 @@ class Product extends Model
         'min_stock',
         'has_variant',
         'tracks_stock',
+        'is_active',
     ];
 
     protected $casts = [
@@ -28,6 +30,7 @@ class Product extends Model
         'price_jual' => 'decimal:2',
         'has_variant' => 'boolean',
         'tracks_stock' => 'boolean',
+        'is_active' => 'boolean',
     ];
 
     public function category()
@@ -50,15 +53,6 @@ class Product extends Model
         return $this->hasMany(StockMovement::class);
     }
 
-    /**
-     * Resep produk ini: bahan baku apa saja yang kepakai tiap 1 unit produk terjual.
-     * Contoh: Es Teh Susu -> Susu (qty_used = 100ml).
-     * Produk yang gak butuh bahan baku (misal Aqua botol) relasi ini kosong.
-     *
-     * Nama tabel pivot dikasih eksplisit ('product_ingredient') karena default
-     * tebakan Laravel (alfabetis: ingredient_product) beda sama nama tabel
-     * yang dibikin di migration.
-     */
     public function ingredients()
     {
         return $this->belongsToMany(Ingredient::class, 'product_ingredient')
@@ -66,12 +60,18 @@ class Product extends Model
             ->withTimestamps();
     }
 
-    /**
-     * Cuma produk dengan tracks_stock=true yang dianggap "low stock",
-     * produk kayak Es Teh (tracks_stock=false) gak pernah masuk hitungan ini.
-     */
     public function isLowStock(): bool
     {
         return $this->tracks_stock && $this->stock <= $this->min_stock;
+    }
+
+    /**
+     * Scope buat ambil produk yang masih dijual aja.
+     * Dipakai di katalog kasir supaya produk yang dinonaktifkan
+     * otomatis ngilang tanpa perlu diulang-ulang query where-nya.
+     */
+    public function scopeActive(Builder $query): Builder
+    {
+        return $query->where('is_active', true);
     }
 }

@@ -41,7 +41,7 @@
             <tr><td>Invoice</td><td class="right bold">{{ $transaction->invoice_number }}</td></tr>
             <tr><td>Tanggal</td><td class="right">{{ $transaction->created_at->format('d/m/Y H:i') }}</td></tr>
             <tr><td>Kasir</td><td class="right">{{ $transaction->user->name }}</td></tr>
-            <tr><td>Customer</td><td class="right">{{ $transaction->customer->name ?? 'Umum' }}</td></tr>
+            <tr><td>Customer</td><td class="right">{{ $transaction->displayCustomerName() }}</td></tr>
             <tr><td>Status</td><td class="right bold">{{ ucfirst($transaction->status) }}</td></tr>
         </table>
 

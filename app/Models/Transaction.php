@@ -14,6 +14,7 @@ class Transaction extends Model
         'invoice_number',
         'user_id',
         'customer_id',
+        'customer_name',
         'subtotal',
         'discount',
         'tax',
@@ -53,6 +54,19 @@ class Transaction extends Model
     public function payments()
     {
         return $this->hasMany(Payment::class);
+    }
+
+    /**
+     * Nama customer yang ditampilkan di struk/daftar transaksi.
+     * customer_name (teks bebas saat transaksi dibuat) diprioritaskan,
+     * fallback ke nama master customer (untuk data lama sebelum kolom ini ada),
+     * fallback terakhir "Umum".
+     */
+    public function displayCustomerName(): string
+    {
+        return $this->customer_name
+            ?: ($this->customer->name ?? null)
+            ?: 'Umum';
     }
 
     /**

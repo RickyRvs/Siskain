@@ -131,9 +131,9 @@
                                     <td class="px-6 py-4">
                                         <div class="flex items-center gap-2.5">
                                             <div class="w-7 h-7 rounded-full bg-[#F3E7C4] text-[#8A6D1D] flex items-center justify-center text-[11px] font-semibold shrink-0">
-                                                {{ strtoupper(substr($transaction->customer->name ?? 'U', 0, 1)) }}
+                                                {{ strtoupper(substr($transaction->displayCustomerName(), 0, 1)) }}
                                             </div>
-                                            <span class="text-sm text-[#1F2A24]">{{ $transaction->customer->name ?? 'Umum' }}</span>
+                                            <span class="text-sm text-[#1F2A24]">{{ $transaction->displayCustomerName() }}</span>
                                         </div>
                                     </td>
                                     <td class="px-6 py-4 text-sm text-[#8A8272]">{{ $transaction->user->name }}</td>
@@ -177,11 +177,11 @@
                         <div class="flex items-start justify-between gap-2 mb-2">
                             <div class="flex items-center gap-2.5 min-w-0">
                                 <div class="w-8 h-8 rounded-full bg-[#F3E7C4] text-[#8A6D1D] flex items-center justify-center text-xs font-semibold shrink-0">
-                                    {{ strtoupper(substr($transaction->customer->name ?? 'U', 0, 1)) }}
+                                    {{ strtoupper(substr($transaction->displayCustomerName(), 0, 1)) }}
                                 </div>
                                 <div class="min-w-0">
                                     <p class="font-mono text-sm text-[#1F2A24] truncate">{{ $transaction->invoice_number }}</p>
-                                    <p class="text-xs text-[#8A8272] truncate">{{ $transaction->customer->name ?? 'Umum' }}</p>
+                                    <p class="text-xs text-[#8A8272] truncate">{{ $transaction->displayCustomerName() }}</p>
                                 </div>
                             </div>
                             <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium shrink-0 {{ $badgeClass($transaction->status) }}">

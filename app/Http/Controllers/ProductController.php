@@ -7,6 +7,7 @@ use App\Models\Ingredient;
 use App\Models\Product;
 use App\Models\StockMovement;
 use App\Services\TenantContext;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -177,11 +178,35 @@ class ProductController extends Controller
 
     public function destroy(Product $product)
     {
-        $product->delete();
+        try {
+            $product->delete();
+        } catch (QueryException $e) {
+            // Kode 23000 = pelanggaran foreign key constraint. Ini kejadian
+            // kalau produk masih dipakai di transaksi, riwayat stok, resep
+            // bahan baku (pivot), atau punya varian — jadi gak bisa dihapus
+            // begitu aja tanpa merusak data riwayat yang sudah tercatat.
+            if ($e->getCode() === '23000') {
+                return back()->with(
+                    'error',
+                    'Produk "'.$product->name.'" tidak bisa dihapus karena masih terpakai di riwayat transaksi, stok, atau resep bahan baku. '
+                    .'Kalau produk ini sudah gak dijual lagi, coba matikan/arsipkan saja daripada dihapus.'
+                );
+            }
+
+            throw $e;
+        }
 
         return redirect()->route('products.index')->with('success', 'Produk berhasil dihapus.');
     }
 
+        public function toggleActive(Product $product)
+    {
+        $product->update(['is_active' => !$product->is_active]);
+
+        $status = $product->is_active ? 'diaktifkan' : 'dinonaktifkan';
+
+        return back()->with('success', 'Produk "'.$product->name.'" berhasil '.$status.'.');
+    }
     public function adjustStock(Request $request, Product $product)
     {
         if (!$product->tracks_stock) {

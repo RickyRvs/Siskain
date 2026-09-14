@@ -6,10 +6,6 @@
     <div class="py-6">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
-            @if (session('success'))
-                <div class="mb-4 p-4 bg-[#EAF3EE] text-[#2F6F4E] rounded-lg">{{ session('success') }}</div>
-            @endif
-
             {{-- Statistik ringkas --}}
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
                 <div class="bg-white ring-1 ring-[#E7E1D3] shadow-sm rounded-xl p-5">
@@ -68,8 +64,13 @@
             @else
                 <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
                     @foreach ($products as $product)
-                        <div class="bg-white ring-1 ring-[#E7E1D3] shadow-sm rounded-lg overflow-hidden flex flex-col">
-                            <div class="aspect-[4/3] bg-[#F6F3EC] flex items-center justify-center overflow-hidden">
+                        <div class="bg-white ring-1 ring-[#E7E1D3] shadow-sm rounded-lg overflow-hidden flex flex-col {{ !$product->is_active ? 'opacity-60' : '' }}">
+                            <div class="relative aspect-[4/3] bg-[#F6F3EC] flex items-center justify-center overflow-hidden">
+                                @unless ($product->is_active)
+                                    <span class="absolute top-1.5 left-1.5 z-10 text-[9px] font-semibold text-white bg-[#8A8272] px-1.5 py-0.5 rounded-full">
+                                        Nonaktif
+                                    </span>
+                                @endunless
                                 @if ($product->photo)
                                     <img src="{{ Storage::url($product->photo) }}" alt="{{ $product->name }}" class="w-full h-full object-cover">
                                 @else
@@ -127,11 +128,33 @@
                                             Edit
                                         </button>
                                     </div>
-                                    <form action="{{ route('products.destroy', $product) }}" method="POST" onsubmit="return confirm('Hapus produk ini?')">
+                                    <form id="delete-form-{{ $product->id }}" action="{{ route('products.destroy', $product) }}" method="POST" class="inline">
                                         @csrf @method('DELETE')
-                                        <button type="submit" class="text-[#B5482E] hover:underline py-1">Hapus</button>
+                                        <button
+                                            type="button"
+                                            class="btn-hapus-produk text-[#B5482E] hover:underline py-1"
+                                            data-id="{{ $product->id }}"
+                                            data-nama="{{ $product->name }}"
+                                        >
+                                            Hapus
+                                        </button>
                                     </form>
                                 </div>
+
+                                {{-- Nonaktifkan/Aktifkan: produk tetap ada di database & riwayat transaksi,
+                                     tapi otomatis hilang/muncul lagi di katalog kasir --}}
+                                <form id="toggle-active-form-{{ $product->id }}" action="{{ route('products.toggle-active', $product) }}" method="POST" class="mt-1.5">
+                                    @csrf @method('PATCH')
+                                    <button
+                                        type="button"
+                                        class="btn-toggle-aktif w-full text-[10px] font-medium py-1.5 rounded-md border transition {{ $product->is_active ? 'border-[#E7E1D3] text-[#8A8272] hover:bg-[#F6F3EC]' : 'border-[#BFDCC9] text-[#2F6F4E] bg-[#EAF3EE] hover:bg-[#DDEEE4]' }}"
+                                        data-id="{{ $product->id }}"
+                                        data-nama="{{ $product->name }}"
+                                        data-aktif="{{ $product->is_active ? '1' : '0' }}"
+                                    >
+                                        {{ $product->is_active ? 'Nonaktifkan' : 'Aktifkan' }}
+                                    </button>
+                                </form>
                             </div>
                         </div>
 
@@ -468,4 +491,110 @@
             });
         </script>
     @endif
+
+    {{-- SweetAlert2: dipasang via @once biar gak double-load kalau ada partial lain
+         yang juga butuh SweetAlert di halaman yang sama --}}
+    @once
+        <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    @endonce
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // Konfirmasi hapus produk — dipasang lewat event delegation di
+            // level dokumen supaya tetap jalan walau kartu produk berubah
+            // (pagination/filter) tanpa perlu re-bind listener satu-satu.
+            document.addEventListener('click', function (event) {
+                const btn = event.target.closest('.btn-hapus-produk');
+                if (!btn) return;
+
+                const id = btn.dataset.id;
+                const nama = btn.dataset.nama;
+
+                Swal.fire({
+                    title: 'Hapus produk ini?',
+                    html: `Produk <b>${nama}</b> akan dihapus permanen.<br>Tindakan ini tidak bisa dibatalkan.`,
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonText: 'Ya, hapus',
+                    cancelButtonText: 'Batal',
+                    confirmButtonColor: '#B5482E',
+                    cancelButtonColor: '#8A8272',
+                    reverseButtons: true,
+                    focusCancel: true,
+                    // SweetAlert2 responsif secara default (popup lebar 90% di layar sempit),
+                    // tapi dipertegas lagi biar nyaman ditekan jari di HP/tablet.
+                    width: window.matchMedia('(max-width: 640px)').matches ? '92%' : undefined,
+                    customClass: {
+                        popup: 'rounded-2xl',
+                        confirmButton: 'px-4 py-2 rounded-lg text-sm sm:text-base',
+                        cancelButton: 'px-4 py-2 rounded-lg text-sm sm:text-base',
+                    },
+                    buttonsStyling: true,
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        document.getElementById('delete-form-' + id).submit();
+                    }
+                });
+            });
+
+            // Konfirmasi nonaktifkan/aktifkan produk — sama persis polanya
+            // dengan konfirmasi hapus, cuma beda pesan & warna tombol.
+            document.addEventListener('click', function (event) {
+                const btn = event.target.closest('.btn-toggle-aktif');
+                if (!btn) return;
+
+                const id = btn.dataset.id;
+                const nama = btn.dataset.nama;
+                const aktif = btn.dataset.aktif === '1';
+
+                Swal.fire({
+                    title: aktif ? 'Nonaktifkan produk?' : 'Aktifkan produk?',
+                    html: aktif
+                        ? `Produk <b>${nama}</b> akan hilang dari katalog kasir.<br>Riwayat transaksi lama tetap aman, dan produk bisa diaktifkan lagi kapan saja.`
+                        : `Produk <b>${nama}</b> akan muncul lagi di katalog kasir.`,
+                    icon: 'question',
+                    showCancelButton: true,
+                    confirmButtonText: aktif ? 'Ya, nonaktifkan' : 'Ya, aktifkan',
+                    cancelButtonText: 'Batal',
+                    confirmButtonColor: aktif ? '#B5842A' : '#2F6F4E',
+                    cancelButtonColor: '#8A8272',
+                    reverseButtons: true,
+                    focusCancel: true,
+                    width: window.matchMedia('(max-width: 640px)').matches ? '92%' : undefined,
+                    customClass: {
+                        popup: 'rounded-2xl',
+                        confirmButton: 'px-4 py-2 rounded-lg text-sm sm:text-base',
+                        cancelButton: 'px-4 py-2 rounded-lg text-sm sm:text-base',
+                    },
+                    buttonsStyling: true,
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        document.getElementById('toggle-active-form-' + id).submit();
+                    }
+                });
+            });
+
+            @if (session('success'))
+                Swal.fire({
+                    icon: 'success',
+                    title: @json(session('success')),
+                    toast: true,
+                    position: 'top-end',
+                    showConfirmButton: false,
+                    timer: 2500,
+                    timerProgressBar: true,
+                });
+            @endif
+
+            @if (session('error'))
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Gagal',
+                    text: @json(session('error')),
+                    confirmButtonColor: '#B5482E',
+                    width: window.matchMedia('(max-width: 640px)').matches ? '92%' : undefined,
+                });
+            @endif
+        });
+    </script>
 </x-app-layout>

@@ -93,6 +93,10 @@ Route::middleware(['auth', 'verified', 'role:owner,kasir'])->group(function () {
         Route::resource('products', ProductController::class);
         Route::post('products/{product}/adjust-stock', [ProductController::class, 'adjustStock'])->name('products.adjust-stock');
 
+        // Nonaktifkan/aktifkan produk — produk tetap ada di database & riwayat
+        // transaksi, tapi otomatis hilang/muncul lagi dari katalog kasir.
+        Route::patch('products/{product}/toggle-active', [ProductController::class, 'toggleActive'])->name('products.toggle-active');
+
         // Varian produk (nested, shallow)
         Route::resource('products.variants', ProductVariantController::class)
             ->shallow()

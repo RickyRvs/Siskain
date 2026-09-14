@@ -10,6 +10,7 @@ use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Models\StockMovement;
 use App\Models\Transaction;
+use App\Services\TenantContext;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
@@ -24,6 +25,7 @@ class TransactionController extends Controller
                 $search = $request->search;
                 $q->where(function ($sub) use ($search) {
                     $sub->where('invoice_number', 'like', "%{$search}%")
+                        ->orWhere('customer_name', 'like', "%{$search}%")
                         ->orWhereHas('customer', fn ($cq) => $cq->where('name', 'like', "%{$search}%"));
                 });
             })
@@ -52,7 +54,10 @@ class TransactionController extends Controller
 
     public function create()
     {
+        // ->active() : produk yang dinonaktifkan owner gak boleh muncul lagi
+        // di katalog kasir, walaupun stoknya masih ada.
         $products = Product::with(['variants', 'ingredients'])
+            ->active()
             ->where(function ($q) {
                 $q->where('stock', '>', 0)
                     ->orWhere('has_variant', true)
@@ -70,6 +75,7 @@ class TransactionController extends Controller
     {
         $validated = $request->validate([
             'customer_id' => 'nullable|exists:customers,id',
+            'customer_name' => 'nullable|string|max:150',
             'items' => 'required|array|min:1',
             'items.*.product_id' => 'required|exists:products,id',
             'items.*.product_variant_id' => 'nullable|exists:product_variants,id',
@@ -81,6 +87,10 @@ class TransactionController extends Controller
             'paid_amount' => 'required|numeric|min:0',
             'is_piutang' => 'nullable|boolean',
         ]);
+
+        // Normalisasi nama customer: string kosong dianggap null ("Umum")
+        $customerName = trim((string) ($validated['customer_name'] ?? ''));
+        $validated['customer_name'] = $customerName !== '' ? $customerName : null;
 
         $merged = [];
         foreach ($validated['items'] as $item) {
@@ -110,6 +120,16 @@ class TransactionController extends Controller
                             if ((int) $variant->product_id !== (int) $item['product_id']) {
                                 throw new \RuntimeException('Varian yang dipilih tidak sesuai dengan produknya.');
                             }
+
+                            // Jaga-jaga race condition: kasir buka form pas produk masih
+                            // aktif, lalu owner nonaktifkan produknya di tab lain sebelum
+                            // kasir klik simpan. Cek ulang status produk induknya di sini,
+                            // jangan cuma percaya data yang dikirim dari form.
+                            $parentActive = Product::where('id', $variant->product_id)->value('is_active');
+                            if (!$parentActive) {
+                                throw new \RuntimeException('Produk untuk varian ini sudah tidak dijual lagi.');
+                            }
+
                             if ($variant->stock < $item['qty']) {
                                 throw new \RuntimeException("Stok varian {$variant->name} tidak mencukupi.");
                             }
@@ -120,6 +140,10 @@ class TransactionController extends Controller
 
                             if ($product->has_variant) {
                                 throw new \RuntimeException("Produk {$product->name} punya varian, pilih variannya dulu.");
+                            }
+
+                            if (!$product->is_active) {
+                                throw new \RuntimeException("Produk {$product->name} sudah tidak dijual lagi.");
                             }
 
                             if ($product->tracks_stock && $product->stock < $item['qty']) {
@@ -163,12 +187,11 @@ class TransactionController extends Controller
                     $isPiutang = !empty($validated['is_piutang']) || $paidAmount < $total;
                     $status = $isPiutang ? 'piutang' : 'lunas';
 
-                    $todayCount = Transaction::whereDate('created_at', today())->lockForUpdate()->count();
-
                     $transaction = Transaction::create([
-                        'invoice_number' => 'INV-' . now()->format('Ymd') . '-' . str_pad($todayCount + 1, 4, '0', STR_PAD_LEFT),
+                        'invoice_number' => $this->generateInvoiceNumber(),
                         'user_id' => auth()->id(),
                         'customer_id' => $validated['customer_id'] ?? null,
+                        'customer_name' => $validated['customer_name'],
                         'subtotal' => $subtotal,
                         'discount' => $discount,
                         'tax' => $tax,
@@ -251,6 +274,35 @@ class TransactionController extends Controller
         } while ($attempts < 3);
 
         return back()->withInput()->with('error', 'Transaksi gagal disimpan, silakan coba lagi.');
+    }
+
+        /**
+     * Generate invoice number secara atomic pakai tabel counter terpisah per tenant.
+     * Format: INV-{tenant_id}-{Ymd}-{4 digit urut}. tenant_id dimasukkan ke
+     * string-nya sendiri supaya nggak pernah collide dengan nomor lama
+     * (format lama tanpa tenant_id) maupun dengan tenant lain, walau
+     * angka urutnya kebetulan sama.
+     */
+    private function generateInvoiceNumber(): string
+    {
+        $tenantId = app(TenantContext::class)->id();
+
+        if ($tenantId === null) {
+            throw new \RuntimeException('Tidak ada tenant aktif, tidak bisa membuat transaksi.');
+        }
+
+        $today = today()->toDateString();
+
+        DB::statement(
+            'INSERT INTO invoice_counters (tenant_id, date, last_number, created_at, updated_at)
+             VALUES (?, ?, LAST_INSERT_ID(1), NOW(), NOW())
+             ON DUPLICATE KEY UPDATE last_number = LAST_INSERT_ID(last_number + 1)',
+            [$tenantId, $today]
+        );
+
+        $number = (int) DB::getPdo()->lastInsertId();
+
+        return 'INV-' . $tenantId . '-' . now()->format('Ymd') . '-' . str_pad($number, 4, '0', STR_PAD_LEFT);
     }
 
     public function show(Transaction $transaction)

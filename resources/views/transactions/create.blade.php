@@ -26,7 +26,8 @@
                      'price' => (float) $v->price_jual,
                      'stock' => (int) $v->stock,
                                  ])->values(),
-             ])->values() }}
+             ])->values() }},
+             customers: {{ $customers->map(fn($c) => ['id' => $c->id, 'name' => $c->name])->values() }}
          })">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-28">
 
@@ -59,7 +60,8 @@
                         <input type="hidden" :name="'items['+index+'][qty]'" :value="item.qty">
                     </span>
                 </template>
-                <input type="hidden" name="customer_id" x-model="customerId">
+                <input type="hidden" name="customer_id" :value="matchedCustomerId">
+                <input type="hidden" name="customer_name" :value="customerName.trim()">
                 <input type="hidden" name="payment_method" x-model="paymentMethod">
                 <input type="hidden" name="paid_amount" :value="paidAmount">
                 <input type="hidden" name="is_piutang" :value="isPiutang ? 1 : 0">
@@ -172,12 +174,15 @@
                             <!-- Customer -->
                             <div class="px-5 pt-4">
                                 <label class="block text-xs text-[#8A8272] mb-1">Customer</label>
-                                <select x-model="customerId" class="w-full text-sm border-[#DDD5C2] rounded-lg shadow-sm focus:border-[#D4A73C] focus:ring-[#D4A73C]">
-                                    <option value="">Umum</option>
-                                    @foreach ($customers as $customer)
-                                        <option value="{{ $customer->id }}">{{ $customer->name }}</option>
-                                    @endforeach
-                                </select>
+                                <input type="text" x-model="customerName" list="customerNameOptions" autocomplete="off"
+                                       placeholder="Umum (ketik nama, atau kosongkan)"
+                                       class="w-full text-sm border-[#DDD5C2] rounded-lg shadow-sm focus:border-[#D4A73C] focus:ring-[#D4A73C]">
+                                <datalist id="customerNameOptions">
+                                    <template x-for="c in customers" :key="c.id">
+                                        <option :value="c.name"></option>
+                                    </template>
+                                </datalist>
+                                <p class="text-[11px] text-[#8A8272] mt-1">Pilih dari daftar yang muncul, atau ketik nama baru bebas.</p>
                             </div>
 
                             <!-- Daftar item -->
@@ -332,7 +337,7 @@
     </div>
 
     <script>
-        function posForm({ products }) {
+        function posForm({ products, customers }) {
             const CATEGORY_COLORS = [
                 { bg: 'bg-[#F3E7C4]', text: 'text-[#8A6D1D]' },
                 { bg: 'bg-[#EAF3EE]', text: 'text-[#2F6F4E]' },
@@ -344,10 +349,11 @@
 
             return {
                 products,
+                customers,
                 items: [],
                 search: '',
                 activeCategory: 'Semua',
-                customerId: '',
+                customerName: '',
                 paymentMethod: 'tunai',
                 isPiutang: false,
                 paidAmount: 0,
@@ -361,6 +367,13 @@
                 get categories() {
                     const set = new Set(this.products.map(p => p.category || 'Lainnya'));
                     return ['Semua', ...Array.from(set)];
+                },
+
+                get matchedCustomerId() {
+                    const name = this.customerName.trim().toLowerCase();
+                    if (!name) return '';
+                    const found = this.customers.find(c => c.name.trim().toLowerCase() === name);
+                    return found ? found.id : '';
                 },
 
                 categoryColor(name) {
