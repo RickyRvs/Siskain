@@ -107,6 +107,10 @@
                 };
             @endphp
 
+            <!-- Wrapper ini yang di-swap via AJAX pas ganti halaman pagination,
+                 biar gak full reload & browser gak auto-scroll ke atas -->
+            <div id="transactions-list-wrap">
+
             <!-- Tabel: tampil di layar lg ke atas -->
             <div class="hidden lg:block bg-white rounded-xl ring-1 ring-[#E7E1D3] shadow-sm overflow-hidden">
                 <div class="overflow-x-auto">
@@ -224,6 +228,57 @@
             </div>
 
             <div>{{ $transactions->links() }}</div>
+
+            </div>{{-- /#transactions-list-wrap --}}
+
         </div>
     </div>
+
+    <script>
+        (function () {
+            const wrap = document.getElementById('transactions-list-wrap');
+            if (!wrap) return;
+
+            function loadPage(url, pushState) {
+                wrap.style.opacity = '0.5';
+
+                fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+                    .then((res) => res.text())
+                    .then((html) => {
+                        const doc = new DOMParser().parseFromString(html, 'text/html');
+                        const fresh = doc.getElementById('transactions-list-wrap');
+                        if (fresh) {
+                            wrap.innerHTML = fresh.innerHTML;
+                        }
+                        wrap.style.opacity = '1';
+
+                        if (pushState) {
+                            window.history.pushState({ transactionsAjax: true }, '', url);
+                        }
+                    })
+                    .catch(() => {
+                        // fallback kalau fetch gagal (mis. offline): tetap navigasi biasa
+                        window.location.href = url;
+                    });
+            }
+
+            // Delegasi klik: hanya link pagination (di dalam <nav>) yang di-intercept,
+            // link "Detail" ke halaman transaksi tetap jalan normal.
+            wrap.addEventListener('click', function (e) {
+                const link = e.target.closest('a');
+                if (!link || !wrap.contains(link)) return;
+                if (!link.closest('nav')) return; // bukan link pagination
+
+                e.preventDefault();
+                if (link.getAttribute('aria-disabled') === 'true') return;
+
+                loadPage(link.getAttribute('href'), true);
+            });
+
+            // Tombol back/forward browser tetap sinkron sama isi tabel
+            window.addEventListener('popstate', function () {
+                loadPage(window.location.href, false);
+            });
+        })();
+    </script>
 </x-app-layout>
