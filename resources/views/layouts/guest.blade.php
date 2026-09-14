@@ -81,7 +81,7 @@
             </div>
 
             <p class="relative z-10 font-mono-r text-[11px] text-[#7C877E]">
-                &copy; 2026 Kasirin. Semua hak dilindungi.
+                &copy; 2026 Siskain. Semua hak dilindungi.
             </p>
 
             <!-- notch & garis putus penyambung ke panel kanan -->
@@ -94,16 +94,10 @@
         <div class="w-full lg:w-[54%] flex flex-col items-center justify-center px-6 py-14 bg-[#FBFAF6]">
             <div class="w-full max-w-[380px]">
 
-                <div class="flex lg:hidden justify-center mb-10">
-                    <div class="inline-flex bg-white rounded-xl px-5 py-3 ring-1 ring-[#E7E1D3]">
-                        <img src="{{ asset('images/logo.png') }}" alt="Siskain" class="h-9 w-auto">
-                    </div>
-                </div>
-
                 {{ $slot }}
 
                 <p class="lg:hidden text-center font-mono-r text-[11px] text-[#8A8272] mt-10">
-                    &copy; 2026 Kasirin. Semua hak dilindungi.
+                    &copy; 2026 Siskain. Semua hak dilindungi.
                 </p>
             </div>
         </div>

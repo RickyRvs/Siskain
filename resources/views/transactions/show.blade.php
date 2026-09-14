@@ -218,7 +218,61 @@
                     <p>Terima kasih atas kunjungan Anda</p>
                 </div>
 
-                <!-- Form bayar piutang dipindah ke halaman Piutang Customer, gak ditampilkan di sini lagi biar gak dobel. -->
+                <!-- Form bayar piutang -->
+                @if ($transaction->status === 'piutang')
+                    @php $sisaPiutang = $transaction->sisaPiutang(); @endphp
+                    <div class="px-4 sm:px-6 py-4 print:hidden border-t border-dashed border-[#E7E1D3] bg-[#FBF8EF]"
+                         x-data="{
+                             amount: {{ $sisaPiutang }},
+                             amountDisplay: '{{ number_format($sisaPiutang, 0, ',', '.') }}',
+                             method: '{{ $transaction->payment_method }}',
+                             submitting: false,
+                             formatRp(v) { return new Intl.NumberFormat('id-ID').format(v || 0); },
+                             unformatRp(v) { const d = String(v).replace(/\D/g, ''); return d ? parseInt(d, 10) : 0; },
+                         }">
+                        <p class="text-sm font-medium text-[#1F2A24] mb-0.5">Bayar Piutang</p>
+                        <p class="text-xs text-[#8A8272] mb-3">
+                            Sisa piutang <span class="font-semibold text-[#B5842A]">Rp {{ number_format($sisaPiutang, 0, ',', '.') }}</span>
+                            @if (!$transaction->customer_id)
+                                &middot; customer Umum, dicatat langsung di invoice ini
+                            @endif
+                        </p>
+
+                        <form action="{{ route('transactions.pay-piutang', $transaction) }}" method="POST" @submit="submitting = true" class="space-y-2.5">
+                            @csrf
+
+                            <div class="flex gap-2">
+                                <div class="relative flex-1">
+                                    <span class="absolute left-2 top-1/2 -translate-y-1/2 text-[10px] text-[#8A8272] pointer-events-none">Rp</span>
+                                    <input type="text" inputmode="numeric" x-model="amountDisplay"
+                                           @input="amount = unformatRp($event.target.value); amountDisplay = formatRp(amount)"
+                                           class="w-full pl-7 text-sm border-[#DDD5C2] rounded-md shadow-sm focus:border-[#D4A73C] focus:ring-[#D4A73C]">
+                                    <input type="hidden" name="amount" :value="amount">
+                                </div>
+                                <select name="payment_method" x-model="method" required
+                                        class="shrink-0 text-sm border-[#DDD5C2] rounded-md shadow-sm focus:border-[#D4A73C] focus:ring-[#D4A73C]">
+                                    <option value="tunai">Tunai</option>
+                                    <option value="transfer">Transfer</option>
+                                    <option value="qris">QRIS</option>
+                                    <option value="lainnya">Lainnya</option>
+                                </select>
+                                <button type="button" @click="amount = {{ $sisaPiutang }}; amountDisplay = formatRp({{ $sisaPiutang }})"
+                                        class="shrink-0 px-3 text-xs font-medium text-[#1F2A24] bg-white ring-1 ring-[#DDD5C2] rounded-md hover:bg-[#F6F3EC]">
+                                    Lunas
+                                </button>
+                            </div>
+
+                            <input type="text" name="note" placeholder="Catatan (opsional)"
+                                   class="w-full text-sm border-[#DDD5C2] rounded-md shadow-sm focus:border-[#D4A73C] focus:ring-[#D4A73C]">
+
+                            <button type="submit" :disabled="amount <= 0 || submitting"
+                                    class="w-full py-2.5 rounded-lg bg-[#1F2A24] text-white text-sm font-medium hover:bg-[#16201B] disabled:opacity-40 disabled:cursor-not-allowed transition">
+                                <span x-show="!submitting">Catat Pembayaran</span>
+                                <span x-show="submitting" x-cloak>Memproses...</span>
+                            </button>
+                        </form>
+                    </div>
+                @endif
             </div>
 
             <!-- Aksi -->

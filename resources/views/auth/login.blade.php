@@ -1,13 +1,7 @@
 <x-guest-layout>
     <!-- Branding -->
-    <div class="flex items-center gap-3 mb-8">
-        <div class="w-11 h-11 sm:w-12 sm:h-12 shrink-0 rounded-xl bg-[#D4A73C] flex items-center justify-center shadow-sm">
-            <span class="text-lg sm:text-xl font-bold text-[#16231D]">S</span>
-        </div>
-        <div class="min-w-0">
-            <p class="text-lg sm:text-xl font-bold text-[#16231D] leading-tight">Siskain</p>
-            <p class="text-xs text-[#8A8272] leading-tight">Sistem Kasir &amp; Inventori</p>
-        </div>
+    <div class="flex justify-center -mt-10 sm:mt-0 mb-6">
+        <img src="{{ asset('images/logo.png') }}" alt="Siskain" class="h-24 sm:h-20 w-auto">
     </div>
 
     <div class="mb-6 sm:mb-8">
