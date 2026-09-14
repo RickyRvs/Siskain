@@ -65,33 +65,58 @@
                                 $paid = $transaction->total - $sisa;
                                 $pct = $transaction->total > 0 ? min(100, round(($paid / $transaction->total) * 100)) : 0;
                             @endphp
-                            <div class="px-4 sm:px-6 py-4">
-                                <div class="flex flex-wrap items-center justify-between gap-3 mb-2">
-                                    <div>
-                                        <span class="text-sm font-medium text-[#1F2A24]">{{ $transaction->invoice_number }}</span>
-                                        <span class="text-xs text-[#8A8371] ml-2">Total Rp {{ number_format($transaction->total, 0, ',', '.') }}</span>
+                            <div class="px-4 sm:px-6 py-4 space-y-3">
+                                <div class="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+                                    <div class="flex items-baseline gap-2 min-w-0">
+                                        <span class="text-sm font-medium text-[#1F2A24] truncate">{{ $transaction->invoice_number }}</span>
+                                        <span class="text-xs text-[#8A8371] shrink-0">Total Rp {{ number_format($transaction->total, 0, ',', '.') }}</span>
                                     </div>
-                                    <span class="text-sm font-semibold text-[#B94A3D]">
+                                    <span class="text-sm font-semibold text-[#B94A3D] shrink-0">
                                         Sisa Rp {{ number_format($sisa, 0, ',', '.') }}
                                     </span>
                                 </div>
 
-                                <div class="flex flex-col sm:flex-row sm:items-center gap-3">
-                                    <div class="flex items-center gap-3 flex-1">
-                                        <div class="flex-1 h-2 rounded-full bg-[#F0ECE0] overflow-hidden">
-                                            <div class="h-full rounded-full bg-[#D4A73C]" style="width: {{ $pct }}%"></div>
-                                        </div>
-                                        <span class="text-xs font-medium text-[#8A8371] w-10 text-right shrink-0">{{ $pct }}%</span>
+                                <div class="flex items-center gap-3">
+                                    <div class="flex-1 h-2 rounded-full bg-[#F0ECE0] overflow-hidden">
+                                        <div class="h-full rounded-full bg-[#D4A73C]" style="width: {{ $pct }}%"></div>
                                     </div>
-
-                                    <form action="{{ route('transactions.pay-piutang', $transaction) }}" method="POST" class="flex items-center gap-2 shrink-0">
-                                        @csrf
-                                        <input type="number" name="amount" placeholder="Jumlah bayar" min="1" max="{{ $sisa }}"
-                                            class="flex-1 sm:w-32 px-2.5 py-1.5 text-sm border border-[#DDD5C2] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#D4A73C]/40 focus:border-[#D4A73C]"
-                                            required>
-                                        <button type="submit" class="shrink-0 px-3 py-1.5 bg-[#1F2A24] text-white rounded-lg text-sm font-medium hover:bg-[#16201B]">Bayar</button>
-                                    </form>
+                                    <span class="text-xs font-medium text-[#8A8371] w-9 text-right shrink-0">{{ $pct }}%</span>
                                 </div>
+
+                                <form action="{{ route('transactions.pay-piutang', $transaction) }}" method="POST"
+                                      class="grid grid-cols-2 sm:flex sm:items-center gap-2"
+                                      x-data="{
+                                          amountDisplay: '',
+                                          sisa: {{ (int) $sisa }},
+                                          formatRupiah(value) {
+                                              let angka = String(value).replace(/\D/g, '');
+                                              if (!angka) return '';
+                                              return new Intl.NumberFormat('id-ID').format(angka);
+                                          },
+                                          unformatRupiah(value) {
+                                              return String(value).replace(/\D/g, '') || '0';
+                                          }
+                                      }">
+                                    @csrf
+                                    <div class="relative col-span-2 sm:flex-1 sm:min-w-[140px] sm:max-w-[180px]">
+                                        <span class="absolute left-3 top-1/2 -translate-y-1/2 text-[#8A8371] text-sm pointer-events-none">Rp</span>
+                                        <input type="text" inputmode="numeric" placeholder="Jumlah bayar"
+                                            x-model="amountDisplay"
+                                            @input="amountDisplay = formatRupiah($event.target.value)"
+                                            class="w-full pl-9 pr-3 py-2 text-sm border border-[#DDD5C2] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#D4A73C]/40 focus:border-[#D4A73C]"
+                                            required>
+                                        <input type="hidden" name="amount" :value="unformatRupiah(amountDisplay)">
+                                    </div>
+                                    <select name="payment_method" required
+                                        class="col-span-1 sm:w-[124px] py-2 px-2.5 text-sm border border-[#DDD5C2] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#D4A73C]/40 focus:border-[#D4A73C]">
+                                        <option value="">Metode</option>
+                                        <option value="tunai">Tunai</option>
+                                        <option value="transfer">Transfer</option>
+                                        <option value="qris">QRIS</option>
+                                        <option value="lainnya">Lainnya</option>
+                                    </select>
+                                    <button type="submit" class="col-span-1 sm:w-auto px-4 py-2 bg-[#1F2A24] text-white rounded-lg text-sm font-medium hover:bg-[#16201B]">Bayar</button>
+                                </form>
                             </div>
                         @endforeach
                     </div>
@@ -99,7 +124,18 @@
 
                 {{-- Modal: bayar total (lump sum, dialokasikan otomatis ke invoice terlama dulu) --}}
                 <x-modal name="pay-total-{{ $customer->id }}" maxWidth="sm">
-                    <form action="{{ route('customers.pay-piutang', $customer) }}" method="POST" class="p-6">
+                    <form action="{{ route('customers.pay-piutang', $customer) }}" method="POST" class="p-6"
+                          x-data="{
+                              amountDisplay: '{{ $isThisPayFailing && old('amount') ? number_format((int) old('amount'), 0, ',', '.') : '' }}',
+                              formatRupiah(value) {
+                                  let angka = String(value).replace(/\D/g, '');
+                                  if (!angka) return '';
+                                  return new Intl.NumberFormat('id-ID').format(angka);
+                              },
+                              unformatRupiah(value) {
+                                  return String(value).replace(/\D/g, '') || '0';
+                              }
+                          }">
                         @csrf
                         <input type="hidden" name="pay_type" value="total">
                         <input type="hidden" name="pay_customer_id" value="{{ $customer->id }}">
@@ -112,11 +148,30 @@
 
                         <div class="mb-5">
                             <label class="block text-sm font-medium text-[#1F2A24] mb-1.5">Jumlah Bayar</label>
-                            <input type="number" name="amount" min="1" max="{{ $customerSisa }}"
-                                value="{{ $isThisPayFailing ? old('amount') : '' }}"
-                                class="w-full px-3 py-2 text-sm border border-[#DDD5C2] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#D4A73C]/40 focus:border-[#D4A73C]"
-                                placeholder="Misal: 50000" required>
+                            <div class="relative">
+                                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-[#8A8371] text-sm pointer-events-none">Rp</span>
+                                <input type="text" inputmode="numeric"
+                                    x-model="amountDisplay"
+                                    @input="amountDisplay = formatRupiah($event.target.value)"
+                                    class="w-full pl-9 pr-3 py-2 text-sm border border-[#DDD5C2] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#D4A73C]/40 focus:border-[#D4A73C]"
+                                    placeholder="Misal: 50.000" required>
+                                <input type="hidden" name="amount" :value="unformatRupiah(amountDisplay)">
+                            </div>
+                            <p class="text-[11px] text-[#8A8371] mt-1">Maks. Rp {{ number_format($customerSisa, 0, ',', '.') }}</p>
                             @if ($isThisPayFailing) @error('amount') <p class="text-[#B94A3D] text-xs mt-1.5">{{ $message }}</p> @enderror @endif
+                        </div>
+
+                        <div class="mb-6">
+                            <label class="block text-sm font-medium text-[#1F2A24] mb-1.5">Metode Bayar</label>
+                            <select name="payment_method" required
+                                class="w-full px-3 py-2 text-sm border border-[#DDD5C2] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#D4A73C]/40 focus:border-[#D4A73C]">
+                                <option value="">Pilih metode</option>
+                                <option value="tunai">Tunai</option>
+                                <option value="transfer">Transfer Bank</option>
+                                <option value="qris">QRIS</option>
+                                <option value="lainnya">Lainnya</option>
+                            </select>
+                            @if ($isThisPayFailing) @error('payment_method') <p class="text-[#B94A3D] text-xs mt-1.5">{{ $message }}</p> @enderror @endif
                         </div>
 
                         <div class="flex flex-col-reverse sm:flex-row sm:justify-end gap-2">

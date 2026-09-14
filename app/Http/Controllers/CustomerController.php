@@ -74,13 +74,16 @@ class CustomerController extends Controller
      * sisanya lanjut ke invoice berikutnya sampai jumlah bayar habis.
      *
      * NOTE: method ini mengasumsikan Transaction punya relasi payments() (hasMany Payment)
-     * dan Payment punya kolom `amount` yang fillable. Kalau skema Payment kamu beda
-     * (misal butuh user_id, note, dsb yang required), sesuaikan array create() di bawah.
+     * dan Payment punya kolom `amount` & `payment_method` yang fillable. Kalau skema Payment
+     * kamu beda (misal butuh user_id, note, dsb yang required), sesuaikan array create() di bawah.
      */
     public function payPiutang(Request $request, Customer $customer)
     {
         $validated = $request->validate([
             'amount' => 'required|numeric|min:1',
+            // Metode bayar dicatat sekali untuk pembayaran gabungan ini, lalu
+            // dipakai sama di semua invoice yang kebagian alokasi dari jumlah ini.
+            'payment_method' => 'required|in:tunai,transfer,qris,lainnya',
         ]);
 
         $transactions = $customer->transactions()
@@ -113,6 +116,7 @@ class CustomerController extends Controller
 
             $transaction->payments()->create([
                 'amount' => $pay,
+                'payment_method' => $validated['payment_method'],
             ]);
 
             if ($pay >= $sisa) {

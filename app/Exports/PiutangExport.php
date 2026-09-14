@@ -2,38 +2,43 @@
 
 namespace App\Exports;
 
-use App\Models\Transaction;
-use Carbon\Carbon;
+use Illuminate\Support\Collection;
 use Maatwebsite\Excel\Concerns\FromCollection;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithMapping;
+use Maatwebsite\Excel\Concerns\WithTitle;
 
-class PiutangExport implements FromCollection, WithHeadings, WithMapping
+class PiutangExport implements FromCollection, WithHeadings, WithMapping, WithTitle
 {
-    public function __construct(protected Carbon $start, protected Carbon $end) {}
+    /**
+     * @param Collection $piutangRecap hasil dari ReportController::buildPiutangRecap()
+     */
+    public function __construct(protected Collection $piutangRecap) {}
 
-    public function collection()
+    public function title(): string
     {
-        return Transaction::where('status', 'piutang')
-            ->whereBetween('created_at', [$this->start, $this->end])
-            ->with('customer')
-            ->withSum('payments', 'amount')
-            ->get();
+        return 'Piutang';
+    }
+
+    public function collection(): Collection
+    {
+        return $this->piutangRecap;
     }
 
     public function headings(): array
     {
-        return ['Tanggal', 'Pelanggan', 'Total', 'Dibayar', 'Sisa'];
+        return ['Tanggal', 'No Invoice', 'Pelanggan', 'Total', 'Dibayar', 'Sisa'];
     }
 
-    public function map($t): array
+    public function map($row): array
     {
         return [
-            $t->created_at->format('d-m-Y'),
-            $t->customer->name ?? 'Pelanggan Umum',
-            $t->total,
-            $t->payments_sum_amount ?? 0,
-            $t->total - ($t->payments_sum_amount ?? 0),
+            $row['tanggal']->format('d-m-Y'),
+            $row['invoice'],
+            $row['customer'],
+            $row['total'],
+            $row['dibayar'],
+            $row['sisa'],
         ];
     }
 }

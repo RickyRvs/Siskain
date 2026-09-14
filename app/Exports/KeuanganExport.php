@@ -2,39 +2,28 @@
 
 namespace App\Exports;
 
-use App\Models\Transaction;
-use Carbon\Carbon;
-use Maatwebsite\Excel\Concerns\FromCollection;
-use Maatwebsite\Excel\Concerns\WithHeadings;
-use Maatwebsite\Excel\Concerns\WithMapping;
+use App\Exports\Sheets\KeuanganHarianSheet;
+use App\Exports\Sheets\KeuanganPengeluaranSheet;
+use App\Exports\Sheets\KeuanganProdukSheet;
+use App\Exports\Sheets\KeuanganRingkasanSheet;
+use Maatwebsite\Excel\Concerns\WithMultipleSheets;
 
-class KeuanganExport implements FromCollection, WithHeadings, WithMapping
+class KeuanganExport implements WithMultipleSheets
 {
-    public function __construct(protected Carbon $start, protected Carbon $end) {}
+    /**
+     * @param array $data hasil dari ReportController::dataFor('keuangan', ...)
+     *                     (keys: start, end, summary, dailyRecap, productRecap, piutangRecap, expenseRecap)
+     */
+    public function __construct(protected array $data) {}
 
-    public function collection()
-    {
-        return Transaction::whereBetween('created_at', [$this->start, $this->end])
-            ->where('status', '!=', 'batal')
-            ->get();
-    }
-
-    public function headings(): array
-    {
-        return ['Tanggal', 'No Transaksi', 'Metode Bayar', 'Status', 'Subtotal', 'Diskon', 'Pajak', 'Total'];
-    }
-
-    public function map($t): array
+    public function sheets(): array
     {
         return [
-            $t->created_at->format('d-m-Y H:i'),
-            $t->invoice_number ?? $t->id,
-            $t->payment_method,
-            $t->status,
-            $t->subtotal,
-            $t->discount,
-            $t->tax,
-            $t->total,
+            new KeuanganRingkasanSheet($this->data['summary'], $this->data['start'], $this->data['end']),
+            new KeuanganHarianSheet($this->data['dailyRecap']),
+            new KeuanganProdukSheet($this->data['productRecap']),
+            new PiutangExport($this->data['piutangRecap']),
+            new KeuanganPengeluaranSheet($this->data['expenseRecap']),
         ];
     }
 }

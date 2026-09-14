@@ -110,43 +110,52 @@
             <!-- Tabel: tampil di layar lg ke atas -->
             <div class="hidden lg:block bg-white rounded-xl ring-1 ring-[#E7E1D3] shadow-sm overflow-hidden">
                 <div class="overflow-x-auto">
-                    <table class="min-w-full divide-y divide-[#E7E1D3]">
+                    <table class="min-w-full divide-y divide-[#E7E1D3] text-sm">
                         <thead class="bg-[#F6F3EC]">
                             <tr>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-[#8A8272] uppercase tracking-wide">Invoice</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-[#8A8272] uppercase tracking-wide">Customer</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-[#8A8272] uppercase tracking-wide">Kasir</th>
-                                <th class="px-6 py-3 text-right text-xs font-medium text-[#8A8272] uppercase tracking-wide">Total</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-[#8A8272] uppercase tracking-wide">Status</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-[#8A8272] uppercase tracking-wide">Tanggal</th>
-                                <th class="px-6 py-3 text-right text-xs font-medium text-[#8A8272] uppercase tracking-wide">Aksi</th>
+                                <th class="px-4 py-2.5 text-left text-xs font-medium text-[#8A8272] uppercase tracking-wide">Invoice</th>
+                                <th class="px-4 py-2.5 text-left text-xs font-medium text-[#8A8272] uppercase tracking-wide">Customer</th>
+                                <th class="px-4 py-2.5 text-left text-xs font-medium text-[#8A8272] uppercase tracking-wide">Item Pesanan</th>
+                                <th class="px-4 py-2.5 text-right text-xs font-medium text-[#8A8272] uppercase tracking-wide">Total</th>
+                                <th class="px-4 py-2.5 text-left text-xs font-medium text-[#8A8272] uppercase tracking-wide">Status</th>
+                                <th class="px-4 py-2.5 text-left text-xs font-medium text-[#8A8272] uppercase tracking-wide">Tanggal</th>
+                                <th class="px-4 py-2.5 text-right text-xs font-medium text-[#8A8272] uppercase tracking-wide">Aksi</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-[#E7E1D3]">
                             @forelse ($transactions as $transaction)
                                 <tr class="hover:bg-[#F6F3EC]/60 transition">
-                                    <td class="px-6 py-4">
-                                        <a href="{{ route('transactions.show', $transaction) }}" class="font-mono text-sm text-[#1F2A24] hover:text-[#B5842A]">{{ $transaction->invoice_number }}</a>
+                                    <td class="px-4 py-3">
+                                        <a href="{{ route('transactions.show', $transaction) }}" class="font-mono text-[#1F2A24] hover:text-[#B5842A]">{{ $transaction->invoice_number }}</a>
                                     </td>
-                                    <td class="px-6 py-4">
-                                        <div class="flex items-center gap-2.5">
-                                            <div class="w-7 h-7 rounded-full bg-[#F3E7C4] text-[#8A6D1D] flex items-center justify-center text-[11px] font-semibold shrink-0">
+                                    <td class="px-4 py-3">
+                                        <div class="flex items-center gap-2">
+                                            <div class="w-6 h-6 rounded-full bg-[#F3E7C4] text-[#8A6D1D] flex items-center justify-center text-[10px] font-semibold shrink-0">
                                                 {{ strtoupper(substr($transaction->displayCustomerName(), 0, 1)) }}
                                             </div>
-                                            <span class="text-sm text-[#1F2A24]">{{ $transaction->displayCustomerName() }}</span>
+                                            <span class="text-[#1F2A24]">{{ $transaction->displayCustomerName() }}</span>
                                         </div>
                                     </td>
-                                    <td class="px-6 py-4 text-sm text-[#8A8272]">{{ $transaction->user->name }}</td>
-                                    <td class="px-6 py-4 text-sm font-medium text-[#1F2A24] text-right">Rp {{ number_format($transaction->total, 0, ',', '.') }}</td>
-                                    <td class="px-6 py-4">
+                                    @php
+                                        // qty ditempel langsung ke nama produknya (mis. "Mie Goreng x1") biar
+                                        // gak ambigu kalau transaksinya isinya lebih dari satu produk.
+                                        $itemSummary = $transaction->items
+                                            ->map(fn ($item) => ($item->product->name ?? 'Produk dihapus') . ' x' . $item->qty)
+                                            ->implode(', ');
+                                    @endphp
+                                    <td class="px-4 py-3 text-[#8A8272] max-w-[240px]">
+                                        <span class="block truncate" title="{{ $itemSummary }}">{{ $itemSummary }}</span>
+                                    </td>
+                                    <td class="px-4 py-3 font-medium text-[#1F2A24] text-right whitespace-nowrap">Rp {{ number_format($transaction->total, 0, ',', '.') }}</td>
+                                    <td class="px-4 py-3">
                                         <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium {{ $badgeClass($transaction->status) }}">
                                             <span class="w-1.5 h-1.5 rounded-full {{ $dotClass($transaction->status) }}"></span>
                                             {{ ucfirst($transaction->status) }}
                                         </span>
                                     </td>
-                                    <td class="px-6 py-4 text-sm text-[#8A8272]">{{ $transaction->created_at->format('d/m/Y H:i') }}</td>
-                                    <td class="px-6 py-4 text-right">
-                                        <a href="{{ route('transactions.show', $transaction) }}" class="inline-flex items-center gap-1 text-sm text-[#1B6E6E] hover:text-[#144F4F] font-medium">
+                                    <td class="px-4 py-3 text-[#8A8272] whitespace-nowrap">{{ $transaction->created_at->format('d/m/Y H:i') }}</td>
+                                    <td class="px-4 py-3 text-right">
+                                        <a href="{{ route('transactions.show', $transaction) }}" class="inline-flex items-center gap-1 text-[#1B6E6E] hover:text-[#144F4F] font-medium">
                                             Detail
                                             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
                                         </a>
@@ -154,7 +163,7 @@
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="7" class="px-6 py-16 text-center">
+                                    <td colspan="7" class="px-4 py-16 text-center">
                                         <p class="text-sm text-[#8A8272]">Belum ada transaksi{{ $hasFilter ? ' yang cocok dengan filter ini' : '' }}.</p>
                                         @if ($hasFilter)
                                             <a href="{{ route('transactions.index') }}" class="mt-2 inline-block text-sm text-[#D4A73C] font-medium hover:underline">Hapus filter</a>
@@ -189,13 +198,17 @@
                                 {{ ucfirst($transaction->status) }}
                             </span>
                         </div>
-                        <div class="flex items-center justify-between gap-2 pt-2 border-t border-dashed border-[#E7E1D3]">
-                            <div class="text-xs text-[#8A8272]">
-                                <span>{{ $transaction->user->name }}</span>
-                                <span class="mx-1">&middot;</span>
-                                <span>{{ $transaction->created_at->format('d/m/Y H:i') }}</span>
+                        @php
+                            $itemSummaryMobile = $transaction->items
+                                ->map(fn ($item) => ($item->product->name ?? 'Produk dihapus') . ' x' . $item->qty)
+                                ->implode(', ');
+                        @endphp
+                        <div class="pt-2 border-t border-dashed border-[#E7E1D3]">
+                            <p class="text-xs text-[#8A8272] truncate" title="{{ $itemSummaryMobile }}">{{ $itemSummaryMobile }}</p>
+                            <div class="flex items-center justify-between gap-2 mt-1.5">
+                                <span class="text-xs text-[#8A8272]">{{ $transaction->created_at->format('d/m/Y H:i') }}</span>
+                                <p class="text-sm font-semibold text-[#1F2A24]">Rp {{ number_format($transaction->total, 0, ',', '.') }}</p>
                             </div>
-                            <p class="text-sm font-semibold text-[#1F2A24]">Rp {{ number_format($transaction->total, 0, ',', '.') }}</p>
                         </div>
                     </a>
                 @empty

@@ -62,19 +62,21 @@ class ReportController extends Controller
     }
 
     public function exportExcel(Request $request, string $type)
-    {
-        $period = $this->resolvePeriodKey($request);
-        [$start, $end] = $this->resolveRange($period, $request);
+{
+    $period = $this->resolvePeriodKey($request);
+    [$start, $end] = $this->resolveRange($period, $request);
 
-        $export = match ($type) {
-            'keuangan' => new KeuanganExport($start, $end),
-            'stok'     => new StokExport(),
-            'piutang'  => new PiutangExport($start, $end),
-            default    => abort(404),
-        };
+    $data = $this->dataFor($type, $start, $end);
 
-        return Excel::download($export, "laporan-{$type}-" . now()->format('Ymd_His') . '.xlsx');
-    }
+    $export = match ($type) {
+        'keuangan' => new KeuanganExport($data),
+        'stok'     => new StokExport($data['stockRecap']),
+        'piutang'  => new PiutangExport($data['piutangRecap']),
+        default    => abort(404),
+    };
+
+    return Excel::download($export, "laporan-{$type}-" . now()->format('Ymd_His') . '.xlsx');
+}
 
     private function dataFor(string $type, Carbon $start, Carbon $end): array
     {

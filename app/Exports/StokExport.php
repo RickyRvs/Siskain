@@ -2,16 +2,27 @@
 
 namespace App\Exports;
 
-use App\Models\Product;
+use Illuminate\Support\Collection;
 use Maatwebsite\Excel\Concerns\FromCollection;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithMapping;
+use Maatwebsite\Excel\Concerns\WithTitle;
 
-class StokExport implements FromCollection, WithHeadings, WithMapping
+class StokExport implements FromCollection, WithHeadings, WithMapping, WithTitle
 {
-    public function collection()
+    /**
+     * @param Collection $stockRecap hasil dari ReportController::buildStockRecap()
+     */
+    public function __construct(protected Collection $stockRecap) {}
+
+    public function title(): string
     {
-        return Product::orderBy('name')->get();
+        return 'Stok';
+    }
+
+    public function collection(): Collection
+    {
+        return $this->stockRecap;
     }
 
     public function headings(): array
@@ -22,14 +33,14 @@ class StokExport implements FromCollection, WithHeadings, WithMapping
     public function map($p): array
     {
         return [
-            $p->name,
-            $p->stock,
-            $p->min_stock,
-            $p->stock <= $p->min_stock ? 'Menipis' : 'Aman',
-            $p->price_modal,
-            $p->price_jual,
-            $p->stock * $p->price_modal,
-            $p->stock * $p->price_jual,
+            $p['name'],
+            $p['stock'],
+            $p['min_stock'],
+            $p['status'],
+            $p['nilai_modal'] > 0 ? $p['nilai_modal'] / max($p['stock'], 1) : 0,
+            $p['nilai_jual'] > 0 ? $p['nilai_jual'] / max($p['stock'], 1) : 0,
+            $p['nilai_modal'],
+            $p['nilai_jual'],
         ];
     }
 }

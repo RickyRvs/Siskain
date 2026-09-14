@@ -20,7 +20,9 @@ class TransactionController extends Controller
 {
     public function index(Request $request)
     {
-        $transactions = Transaction::with(['user', 'customer'])
+        // 'items.product' di-eager-load karena tabel index sekarang nampilin
+        // ringkasan nama produk & total qty per transaksi, bukan cuma nama kasir.
+        $transactions = Transaction::with(['user', 'customer', 'items.product'])
             ->when($request->filled('search'), function ($q) use ($request) {
                 $search = $request->search;
                 $q->where(function ($sub) use ($search) {
@@ -254,6 +256,7 @@ class TransactionController extends Controller
                             'transaction_id' => $transaction->id,
                             'amount' => min($paidAmount, $total),
                             'paid_at' => today(),
+                            'payment_method' => $validated['payment_method'],
                             'note' => 'Pembayaran awal',
                         ]);
                     }
@@ -319,6 +322,10 @@ class TransactionController extends Controller
 
         $validated = $request->validate([
             'amount' => 'required|numeric|min:1',
+            // Metode bayar wajib diisi biar riwayat pembayaran piutang juga
+            // kecatat lewat apa (tunai/transfer/qris/lainnya), sama kayak
+            // pembayaran awal pas transaksi dibuat.
+            'payment_method' => 'required|in:tunai,transfer,qris,lainnya',
             'note' => 'nullable|string',
         ]);
 
@@ -333,6 +340,7 @@ class TransactionController extends Controller
                 'transaction_id' => $transaction->id,
                 'amount' => $validated['amount'],
                 'paid_at' => today(),
+                'payment_method' => $validated['payment_method'],
                 'note' => $validated['note'] ?? null,
             ]);
 

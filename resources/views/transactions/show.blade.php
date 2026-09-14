@@ -179,7 +179,12 @@
                                     <div class="w-2 h-2 rounded-full bg-[#D4A73C] mt-1.5 shrink-0 print:hidden"></div>
                                     <div class="flex-1 min-w-0 flex flex-wrap items-center justify-between gap-1 text-sm print:text-[11px]">
                                         <div class="min-w-0">
-                                            <p class="text-[#1F2A24] print:text-black truncate">{{ $payment->note ?? 'Pembayaran' }}</p>
+                                            <p class="text-[#1F2A24] print:text-black truncate">
+                                                {{ $payment->note ?? 'Pembayaran' }}
+                                                @if (!empty($payment->payment_method))
+                                                    <span class="print:hidden inline-block ml-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-[#F0ECE0] text-[#8A8272] align-middle">{{ ucfirst($payment->payment_method) }}</span>
+                                                @endif
+                                            </p>
                                             <p class="text-xs print:text-[10px] text-[#8A8272] print:text-black/70">{{ $payment->paid_at?->format('d/m/Y') ?? $payment->created_at->format('d/m/Y') }}</p>
                                         </div>
                                         <span class="font-medium text-[#2F6F4E] print:text-black shrink-0">Rp {{ number_format($payment->amount, 0, ',', '.') }}</span>
@@ -194,45 +199,7 @@
                     <p>Terima kasih atas kunjungan Anda</p>
                 </div>
 
-                <!-- Form bayar piutang -->
-                @if ($transaction->status === 'piutang')
-                    <div class="px-4 sm:px-6 py-3 sm:py-4 border-t border-dashed border-[#E7E1D3] bg-[#FBF7EC] print:hidden">
-                        <p class="text-xs font-medium text-[#8A6D1D] uppercase tracking-wide mb-2">Catat Pembayaran Piutang</p>
-                        <form action="{{ route('transactions.pay-piutang', $transaction) }}" method="POST"
-                              class="flex flex-col sm:flex-row sm:flex-wrap gap-2"
-                              x-data="{
-                                  amountDisplay: '',
-                                  sisaPiutang: {{ (int) $transaction->sisaPiutang() }},
-                                  formatRupiah(value) {
-                                      let angka = String(value).replace(/\D/g, '');
-                                      if (!angka) return '';
-                                      return new Intl.NumberFormat('id-ID').format(angka);
-                                  },
-                                  unformatRupiah(value) {
-                                      return String(value).replace(/\D/g, '') || '0';
-                                  }
-                              }">
-                            @csrf
-                            <div class="w-full sm:flex-1 sm:min-w-[140px] relative">
-                                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-[#8A8272] text-sm pointer-events-none">Rp</span>
-                                <input
-                                    type="text"
-                                    inputmode="numeric"
-                                    placeholder="Jumlah bayar"
-                                    x-model="amountDisplay"
-                                    @input="amountDisplay = formatRupiah($event.target.value)"
-                                    class="w-full pl-9 text-sm border-[#DDD5C2] rounded-lg shadow-sm focus:border-[#D4A73C] focus:ring-[#D4A73C]"
-                                    required
-                                >
-                                <input type="hidden" name="amount" :value="unformatRupiah(amountDisplay)">
-                                <p class="text-[11px] text-[#8A8272] mt-1">Maks. Rp {{ number_format($transaction->sisaPiutang(), 0, ',', '.') }}</p>
-                            </div>
-                            <input type="text" name="note" placeholder="Catatan (opsional)"
-                                   class="w-full sm:flex-1 sm:min-w-[140px] text-sm border-[#DDD5C2] rounded-lg shadow-sm focus:border-[#D4A73C] focus:ring-[#D4A73C]">
-                            <button type="submit" class="w-full sm:w-auto px-4 py-2 bg-[#1F2A24] text-white text-sm font-medium rounded-lg hover:bg-[#16201B]">Bayar</button>
-                        </form>
-                    </div>
-                @endif
+                <!-- Form bayar piutang dipindah ke halaman Piutang Customer, gak ditampilkan di sini lagi biar gak dobel. -->
             </div>
 
             <!-- Aksi -->

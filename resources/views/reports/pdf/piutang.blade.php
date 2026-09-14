@@ -21,6 +21,7 @@
         <thead>
             <tr>
                 <th>Tanggal</th>
+                <th>No Invoice</th>
                 <th>Pelanggan</th>
                 <th class="right">Total</th>
                 <th class="right">Dibayar</th>
@@ -31,6 +32,7 @@
             @forelse ($piutangRecap as $row)
                 <tr>
                     <td>{{ $row['tanggal']->translatedFormat('d M Y') }}</td>
+                    <td>{{ $row['invoice'] }}</td>
                     <td>{{ $row['customer'] }}</td>
                     <td class="right">Rp {{ number_format($row['total'], 0, ',', '.') }}</td>
                     <td class="right">Rp {{ number_format($row['dibayar'], 0, ',', '.') }}</td>
@@ -38,14 +40,14 @@
                 </tr>
             @empty
                 <tr>
-                    <td colspan="5" style="text-align:center;">Tidak ada piutang pada periode ini</td>
+                    <td colspan="6" style="text-align:center;">Tidak ada piutang pada periode ini</td>
                 </tr>
             @endforelse
         </tbody>
         @if ($piutangRecap->isNotEmpty())
             <tfoot>
                 <tr>
-                    <td colspan="2"><strong>Total</strong></td>
+                    <td colspan="3"><strong>Total</strong></td>
                     <td class="right"><strong>Rp {{ number_format($piutangRecap->sum('total'), 0, ',', '.') }}</strong></td>
                     <td class="right"><strong>Rp {{ number_format($piutangRecap->sum('dibayar'), 0, ',', '.') }}</strong></td>
                     <td class="right"><strong>Rp {{ number_format($piutangRecap->sum('sisa'), 0, ',', '.') }}</strong></td>
