@@ -62,21 +62,21 @@ class ReportController extends Controller
     }
 
     public function exportExcel(Request $request, string $type)
-{
-    $period = $this->resolvePeriodKey($request);
-    [$start, $end] = $this->resolveRange($period, $request);
+    {
+        $period = $this->resolvePeriodKey($request);
+        [$start, $end] = $this->resolveRange($period, $request);
 
-    $data = $this->dataFor($type, $start, $end);
+        $data = $this->dataFor($type, $start, $end);
 
-    $export = match ($type) {
-        'keuangan' => new KeuanganExport($data),
-        'stok'     => new StokExport($data['stockRecap']),
-        'piutang'  => new PiutangExport($data['piutangRecap']),
-        default    => abort(404),
-    };
+        $export = match ($type) {
+            'keuangan' => new KeuanganExport($data),
+            'stok'     => new StokExport($data['stockRecap']),
+            'piutang'  => new PiutangExport($data['piutangRecap']),
+            default    => abort(404),
+        };
 
-    return Excel::download($export, "laporan-{$type}-" . now()->format('Ymd_His') . '.xlsx');
-}
+        return Excel::download($export, "laporan-{$type}-" . now()->format('Ymd_His') . '.xlsx');
+    }
 
     private function dataFor(string $type, Carbon $start, Carbon $end): array
     {
@@ -173,8 +173,13 @@ class ReportController extends Controller
         $summary['piutang_sudah_dibayar'] = (float) $piutangTransaksi->sum(fn ($t) => $t->payments_sum_amount ?? 0);
         $summary['piutang_sisa'] = $summary['piutang_nilai'] - $summary['piutang_sudah_dibayar'];
 
+        // FIX: exclude payments milik transaksi yang statusnya 'batal',
+        // biar Kas Masuk nggak ikut ngitung uang dari transaksi yang udah dibatalkan.
         $summary['kas_masuk'] = (float) Payment::whereDate('paid_at', '>=', $start->format('Y-m-d'))
             ->whereDate('paid_at', '<=', $end->format('Y-m-d'))
+            ->whereHas('transaction', function ($q) {
+                $q->where('status', '!=', 'batal');
+            })
             ->sum('amount');
 
         // Pengeluaran operasional periode ini (sewa, es batu, dll - di luar modal/COGS produk)
@@ -325,7 +330,7 @@ class ReportController extends Controller
             ]);
     }
 
-      private function buildExpenseRecap(Carbon $start, Carbon $end)
+    private function buildExpenseRecap(Carbon $start, Carbon $end)
     {
         return Expense::whereBetween('expense_date', [$start->format('Y-m-d'), $end->format('Y-m-d')])
             ->with('expenseType')

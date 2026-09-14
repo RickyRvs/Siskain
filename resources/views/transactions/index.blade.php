@@ -1,4 +1,8 @@
 <x-app-layout>
+    {{-- SweetAlert2 via CDN. Kalau layout utama (x-app-layout) lo udah load SweetAlert2
+         di tempat lain, baris ini boleh dihapus biar gak double-load. --}}
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
     <x-slot name="header">
         <div class="flex items-center gap-3">
             <div class="w-1.5 h-7 rounded-full bg-[#D4A73C]"></div>
@@ -6,22 +10,34 @@
         </div>
     </x-slot>
 
+    @if (session('success'))
+        <script>
+            document.addEventListener('DOMContentLoaded', function () {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Berhasil',
+                    text: @json(session('success')),
+                    confirmButtonColor: '#1F2A24',
+                });
+            });
+        </script>
+    @endif
+
+    @if (session('error'))
+        <script>
+            document.addEventListener('DOMContentLoaded', function () {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Gagal',
+                    text: @json(session('error')),
+                    confirmButtonColor: '#1F2A24',
+                });
+            });
+        </script>
+    @endif
+
     <div class="py-6">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-4">
-
-            @if (session('success'))
-                <div class="p-4 bg-[#EAF3EE] border border-[#CFE6DA] text-[#2F6F4E] rounded-lg text-sm flex items-center gap-2">
-                    <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-                    {{ session('success') }}
-                </div>
-            @endif
-
-            @if (session('error'))
-                <div class="p-4 bg-[#FBEAE6] border border-[#F0CFC4] text-[#B5482E] rounded-lg text-sm flex items-center gap-2">
-                    <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z"/></svg>
-                    {{ session('error') }}
-                </div>
-            @endif
 
             <!-- Kartu ringkasan -->
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -82,15 +98,40 @@
                             </a>
                         @endif
 
-                        <a href="{{ route('transactions.create') }}"
-                           class="ml-auto inline-flex items-center gap-1.5 px-4 py-2 bg-[#D4A73C] text-[#0F2E2B] text-sm font-semibold rounded-lg hover:bg-[#E0B559] transition">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                            </svg>
-                            Transaksi Baru
-                        </a>
+                        <div class="ml-auto flex items-center gap-2">
+                            @if ($stats['piutang_count'] > 0)
+                                {{-- type="button" (bukan submit langsung) — submit form-nya baru
+                                     dipicu lewat JS setelah user confirm di SweetAlert, lihat script
+                                     di bagian bawah. Form aslinya sengaja ditaruh di luar form GET
+                                     filter (lihat dekat penutup filter bar di bawah), biar gak nested
+                                     <form>, soalnya HTML gak boleh ada form di dalam form. --}}
+                                <button type="button" id="fix-piutang-btn"
+                                        class="inline-flex items-center gap-1.5 px-3.5 py-2 bg-white ring-1 ring-[#DDD5C2] text-[#1F2A24] text-sm font-medium rounded-lg hover:bg-[#F6F3EC] transition">
+                                    <svg class="w-4 h-4 text-[#B5842A]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
+                                    </svg>
+                                    Perbaiki Status Piutang Lama
+                                </button>
+                            @endif
+
+                            <a href="{{ route('transactions.create') }}"
+                               class="inline-flex items-center gap-1.5 px-4 py-2 bg-[#D4A73C] text-[#0F2E2B] text-sm font-semibold rounded-lg hover:bg-[#E0B559] transition">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                                </svg>
+                                Transaksi Baru
+                            </a>
+                        </div>
                     </div>
                 </form>
+
+                {{-- Form beneran buat tombol "Perbaiki Status Piutang Lama" di atas, sengaja
+                     ditaruh DI LUAR form GET filter biar gak nested form. --}}
+                @if ($stats['piutang_count'] > 0)
+                    <form id="fix-piutang-form" action="{{ route('transactions.fix-piutang-status') }}" method="POST" class="hidden">
+                        @csrf
+                    </form>
+                @endif
             </div>
 
             @php
@@ -235,6 +276,30 @@
     </div>
 
     <script>
+        (function () {
+            const fixBtn = document.getElementById('fix-piutang-btn');
+            const fixForm = document.getElementById('fix-piutang-form');
+
+            if (fixBtn && fixForm) {
+                fixBtn.addEventListener('click', function () {
+                    Swal.fire({
+                        icon: 'question',
+                        title: 'Perbaiki status piutang lama?',
+                        text: 'Ini bakal nyari semua transaksi berstatus piutang yang nominal bayarnya sebenarnya sudah cukup/lebih, terus ngubah statusnya jadi lunas.',
+                        showCancelButton: true,
+                        confirmButtonText: 'Ya, perbaiki',
+                        cancelButtonText: 'Batal',
+                        confirmButtonColor: '#1F2A24',
+                        cancelButtonColor: '#B5482E',
+                    }).then(function (result) {
+                        if (result.isConfirmed) {
+                            fixForm.submit();
+                        }
+                    });
+                });
+            }
+        })();
+
         (function () {
             const wrap = document.getElementById('transactions-list-wrap');
             if (!wrap) return;

@@ -272,7 +272,14 @@
 
                             <!-- Input dibayar + piutang, berlaku untuk semua metode bayar -->
                             <div class="space-y-2.5">
-                                <div>
+                                <label class="flex items-center gap-2 text-sm text-[#5B5647]">
+                                    <input type="checkbox" x-model="isPiutang"
+                                           @change="if (isPiutang) { paidAmount = 0; paidAmountDisplay = '0'; }"
+                                           class="rounded border-[#DDD5C2] text-[#D4A73C] focus:ring-[#D4A73C]">
+                                    Catat sebagai piutang (belum dibayar)
+                                </label>
+
+                                <div x-show="!isPiutang" x-cloak>
                                     <label class="block text-xs text-[#8A8272] mb-1">Dibayar</label>
                                     <div class="flex gap-2">
                                         <div class="relative flex-1">
@@ -288,13 +295,12 @@
                                     </div>
                                 </div>
 
-                                <p class="text-xs" :class="paidAmount - total >= 0 ? 'text-[#2F6F4E]' : 'text-[#B94A3D]'"
+                                <p x-show="!isPiutang" class="text-xs" :class="paidAmount - total >= 0 ? 'text-[#2F6F4E]' : 'text-[#B94A3D]'"
                                    x-text="(paidAmount - total >= 0 ? 'Kembalian: Rp ' : 'Kurang: Rp ') + formatRp(Math.abs(paidAmount - total))"></p>
 
-                                <label class="flex items-center gap-2 text-sm text-[#5B5647]">
-                                    <input type="checkbox" x-model="isPiutang" class="rounded border-[#DDD5C2] text-[#D4A73C] focus:ring-[#D4A73C]">
-                                    Catat sebagai piutang
-                                </label>
+                                <p x-show="isPiutang" x-cloak class="text-xs text-[#B5842A] bg-[#FBF0DA] rounded-md px-3 py-2 leading-relaxed">
+                                    Nominal dibayar dikunci ke Rp 0. Cicilan/pelunasan piutangnya dicatat nanti langsung di halaman detail transaksi.
+                                </p>
                             </div>
 
                             <button type="submit" :disabled="items.length === 0 || submitting"

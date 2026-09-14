@@ -133,6 +133,11 @@ Route::middleware(['auth', 'verified', 'role:owner,kasir'])->group(function () {
 
         Route::patch('transactions/{transaction}/cancel', [TransactionController::class, 'cancel'])->name('transactions.cancel');
         Route::get('transactions/{transaction}/pdf', [TransactionController::class, 'downloadPdf'])->name('transactions.pdf');
+
+        // Perbaikan sekali-jalan: benerin invoice lama yang statusnya masih
+        // "piutang" padahal paid_amount udah >= total (bug checkbox is_piutang
+        // yang udah dipatch di store()/addItems(), lihat komentar di controller).
+        Route::post('transactions/fix-piutang-status', [TransactionController::class, 'fixPiutangStatus'])->name('transactions.fix-piutang-status');
     });
 
     // Laporan & rekap

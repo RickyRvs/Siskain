@@ -203,9 +203,13 @@ class TransactionController extends Controller
                     $total = max(0, $subtotal - $discount + $tax + $additionalFee);
                     $paidAmount = $validated['paid_amount'];
 
-                    // Semua metode bayar (tunai/transfer/qris/lainnya) dicatat manual oleh kasir.
-                    $isPiutang = !empty($validated['is_piutang']) || $paidAmount < $total;
-                    $status = $isPiutang ? 'piutang' : 'lunas';
+                    // Status ditentukan MURNI dari nominal yang dibayar vs total, bukan dari
+                    // checkbox "is_piutang" semata. Kalau nominal yang dibayar udah cukup/lebih,
+                    // status harus lunas walaupun kasir sempat centang piutang - checkbox itu
+                    // cuma dipakai di FE buat ngunci input "Dibayar" ke 0 pas kasir belum
+                    // nerima uang sama sekali (nyicil/lunasin piutang dilakukan nanti dari
+                    // halaman detail transaksi, bukan di form kasir ini).
+                    $status = $paidAmount >= $total ? 'lunas' : 'piutang';
 
                     $transaction = Transaction::create([
                         'invoice_number' => $this->generateInvoiceNumber(),
@@ -490,9 +494,10 @@ class TransactionController extends Controller
                 $additionalPaid = $validated['additional_paid_amount'] ?? 0;
                 $newPaidAmount = $oldPaidAmount + $additionalPaid;
 
-                // Sama kayak store(): kalau dibayar kurang dari total, otomatis piutang.
-                $isPiutang = !empty($validated['is_piutang']) || $newPaidAmount < $newTotal;
-                $status = $isPiutang ? 'piutang' : 'lunas';
+                // Sama kayak store(): status murni dari nominal terbayar vs total,
+                // checkbox is_piutang gak lagi bisa maksa status piutang kalau
+                // nominalnya sebenarnya udah cukup/lebih.
+                $status = $newPaidAmount >= $newTotal ? 'lunas' : 'piutang';
 
                 $transaction->update([
                     'subtotal' => $newSubtotal,
@@ -581,6 +586,38 @@ class TransactionController extends Controller
 
         return redirect()->route('transactions.show', $transaction)
             ->with('success', 'Transaksi berhasil dibatalkan, stok sudah dikembalikan.');
+    }
+
+    /**
+     * Perbaikan sekali-jalan buat transaksi lama yang statusnya masih "piutang"
+     * padahal paid_amount udah >= total (harusnya lunas). Bug lamanya ada di
+     * store()/addItems() yang sempat maksa status jadi piutang cuma dari
+     * checkbox is_piutang, udah dipatch — command ini buat benerin data yang
+     * kadung tersimpan salah SEBELUM patch itu ada. Nyisir SEMUA tenant
+     * sekaligus (withoutGlobalScopes) biar sekali klik langsung beres semua.
+     * Aman dijalankan berkali-kali — kalau udah gak ada yang salah, cuma
+     * ngasih notif "gak ada yang perlu diperbaiki".
+     */
+    public function fixPiutangStatus()
+    {
+        $candidates = Transaction::withoutGlobalScopes()
+            ->where('status', 'piutang')
+            ->whereColumn('paid_amount', '>=', 'total')
+            ->get();
+
+        if ($candidates->isEmpty()) {
+            return back()->with('success', 'Gak ada transaksi yang perlu diperbaiki, semua status sudah benar.');
+        }
+
+        DB::transaction(function () use ($candidates) {
+            foreach ($candidates as $t) {
+                $t->update(['status' => 'lunas']);
+            }
+        });
+
+        $list = $candidates->pluck('invoice_number')->implode(', ');
+
+        return back()->with('success', "{$candidates->count()} transaksi diperbaiki jadi lunas: {$list}");
     }
 
     protected function restoreStockAndCancel(Transaction $transaction, string $note): void
