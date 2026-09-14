@@ -169,22 +169,47 @@
                             </button>
                         </div>
 
+                        <!-- Customer: sengaja di luar area scroll, biar dropdown-nya gak ke-clip sama overflow-y-auto di body -->
+                        <div class="px-5 pt-4 pb-3 border-b border-[#F0ECE0] shrink-0 relative" @click.outside="customerOpen = false">
+                            <label class="block text-xs text-[#8A8272] mb-1">Customer</label>
+                            <div class="relative">
+                                <input type="text" x-model="customerName" autocomplete="off"
+                                       @focus="customerOpen = true"
+                                       @click="customerOpen = true"
+                                       @input="customerOpen = true"
+                                       placeholder="Umum (ketik nama, atau kosongkan)"
+                                       class="w-full text-sm border-[#DDD5C2] rounded-lg shadow-sm focus:border-[#D4A73C] focus:ring-[#D4A73C] pr-9">
+                                <button type="button" @click="customerOpen = !customerOpen"
+                                        class="absolute right-0 top-0 h-full px-3 flex items-center text-[#8A8272]">
+                                    <svg class="w-4 h-4 transition-transform" :class="customerOpen ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
+                                </button>
+
+                                <div x-show="customerOpen" x-cloak
+                                     x-transition:enter="transition ease-out duration-100"
+                                     x-transition:enter-start="opacity-0 scale-95"
+                                     x-transition:enter-end="opacity-100 scale-100"
+                                     class="absolute z-30 mt-1.5 w-full bg-white border border-[#E7E1D3] rounded-lg shadow-lg overflow-hidden">
+                                    <div class="max-h-44 overflow-y-auto py-1">
+                                        <button type="button" @click="customerName = ''; customerOpen = false"
+                                                class="w-full text-left px-3 py-2 text-sm text-[#8A8272] hover:bg-[#F6F3EC] transition">
+                                            Umum (tanpa nama)
+                                        </button>
+                                        <template x-for="c in filteredCustomers()" :key="c.id">
+                                            <button type="button" @click="customerName = c.name; customerOpen = false"
+                                                    class="w-full text-left px-3 py-2 text-sm text-[#1F2A24] hover:bg-[#F6F3EC] transition"
+                                                    x-text="c.name"></button>
+                                        </template>
+                                        <p x-show="filteredCustomers().length === 0" class="px-3 py-2 text-sm text-[#B0A98F]">
+                                            Gak ada customer cocok, lanjut ketik aja buat nama baru.
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                            <p class="text-[11px] text-[#8A8272] mt-1">Pilih dari daftar yang muncul, atau ketik nama baru bebas.</p>
+                        </div>
+
                         <!-- Body: scrollable -->
                         <div class="flex-1 overflow-y-auto">
-                            <!-- Customer -->
-                            <div class="px-5 pt-4">
-                                <label class="block text-xs text-[#8A8272] mb-1">Customer</label>
-                                <input type="text" x-model="customerName" list="customerNameOptions" autocomplete="off"
-                                       placeholder="Umum (ketik nama, atau kosongkan)"
-                                       class="w-full text-sm border-[#DDD5C2] rounded-lg shadow-sm focus:border-[#D4A73C] focus:ring-[#D4A73C]">
-                                <datalist id="customerNameOptions">
-                                    <template x-for="c in customers" :key="c.id">
-                                        <option :value="c.name"></option>
-                                    </template>
-                                </datalist>
-                                <p class="text-[11px] text-[#8A8272] mt-1">Pilih dari daftar yang muncul, atau ketik nama baru bebas.</p>
-                            </div>
-
                             <!-- Daftar item -->
                             <div class="px-5 mt-3 divide-y divide-[#F0ECE0]">
                                 <template x-for="(item, index) in items" :key="item.key">
@@ -354,6 +379,7 @@
                 search: '',
                 activeCategory: 'Semua',
                 customerName: '',
+                customerOpen: false,
                 paymentMethod: 'tunai',
                 isPiutang: false,
                 paidAmount: 0,
@@ -374,6 +400,12 @@
                     if (!name) return '';
                     const found = this.customers.find(c => c.name.trim().toLowerCase() === name);
                     return found ? found.id : '';
+                },
+
+                filteredCustomers() {
+                    const q = this.customerName.trim().toLowerCase();
+                    if (!q) return this.customers;
+                    return this.customers.filter(c => c.name.toLowerCase().includes(q));
                 },
 
                 categoryColor(name) {
