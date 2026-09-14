@@ -123,13 +123,32 @@ class TransactionController extends Controller
         }
         $validated['items'] = array_values($merged);
 
+        $tenantId = app(TenantContext::class)->id();
+
+        if ($tenantId === null) {
+            return back()->withInput()->with('error', 'Tidak ada tenant aktif, tidak bisa membuat transaksi.');
+        }
+
+        $today = today()->toDateString();
+
         $attempts = 0;
+        $maxAttempts = 5;
 
         do {
             $attempts++;
 
+            // FIX: generate invoice number DI LUAR DB::transaction() di bawah. Sebelumnya
+            // generateInvoiceNumber() dipanggil di dalam closure transaksi utama, jadi kalau
+            // transaksi utamanya gagal & rollback (mis. gara-gara duplicate invoice_number),
+            // increment counter di tabel invoice_counters IKUT ke-rollback juga - retry
+            // berikutnya generate nomor yang PERSIS SAMA lagi, gagal lagi, gitu terus sampai
+            // attempts habis. Dengan generate di sini (statement berdiri sendiri, gak ada
+            // transaksi aktif yang membungkusnya), incrementnya langsung permanen di database
+            // walau transaksi utama nanti gagal - jadi retry berikutnya pasti dapat nomor baru.
+            $invoiceNumber = $this->generateInvoiceNumber($tenantId, $today);
+
             try {
-                $transaction = DB::transaction(function () use ($validated) {
+                $transaction = DB::transaction(function () use ($validated, $invoiceNumber) {
                     $subtotal = 0;
                     $itemsData = [];
 
@@ -141,10 +160,6 @@ class TransactionController extends Controller
                                 throw new \RuntimeException('Varian yang dipilih tidak sesuai dengan produknya.');
                             }
 
-                            // Jaga-jaga race condition: kasir buka form pas produk masih
-                            // aktif, lalu owner nonaktifkan produknya di tab lain sebelum
-                            // kasir klik simpan. Cek ulang status produk induknya di sini,
-                            // jangan cuma percaya data yang dikirim dari form.
                             $parentActive = Product::where('id', $variant->product_id)->value('is_active');
                             if (!$parentActive) {
                                 throw new \RuntimeException('Produk untuk varian ini sudah tidak dijual lagi.');
@@ -204,15 +219,11 @@ class TransactionController extends Controller
                     $paidAmount = $validated['paid_amount'];
 
                     // Status ditentukan MURNI dari nominal yang dibayar vs total, bukan dari
-                    // checkbox "is_piutang" semata. Kalau nominal yang dibayar udah cukup/lebih,
-                    // status harus lunas walaupun kasir sempat centang piutang - checkbox itu
-                    // cuma dipakai di FE buat ngunci input "Dibayar" ke 0 pas kasir belum
-                    // nerima uang sama sekali (nyicil/lunasin piutang dilakukan nanti dari
-                    // halaman detail transaksi, bukan di form kasir ini).
+                    // checkbox "is_piutang" semata.
                     $status = $paidAmount >= $total ? 'lunas' : 'piutang';
 
                     $transaction = Transaction::create([
-                        'invoice_number' => $this->generateInvoiceNumber(),
+                        'invoice_number' => $invoiceNumber,
                         'user_id' => auth()->id(),
                         'customer_id' => $validated['customer_id'] ?? null,
                         'customer_name' => $validated['customer_name'],
@@ -290,34 +301,34 @@ class TransactionController extends Controller
 
             } catch (QueryException $e) {
                 $isDuplicateInvoice = str_contains(strtolower($e->getMessage()), 'invoice_number');
-                if (!$isDuplicateInvoice || $attempts >= 3) {
+                if (!$isDuplicateInvoice || $attempts >= $maxAttempts) {
                     throw $e;
                 }
+
+                // Self-heal: ini kejadian tandanya invoice_counters ketinggalan
+                // dibanding data yang SUDAH ADA di tabel transactions (mis. hasil
+                // seed/import manual yang gak lewat generateInvoiceNumber()).
+                // Samakan counter ke nomor terbesar yang beneran kepakai hari ini,
+                // biar percobaan berikutnya gak collide ke nomor yang sama lagi.
+                $this->resyncInvoiceCounter($tenantId, $today);
+
             } catch (\RuntimeException $e) {
                 return back()->withInput()->with('error', $e->getMessage());
             }
-        } while ($attempts < 3);
+        } while ($attempts < $maxAttempts);
 
         return back()->withInput()->with('error', 'Transaksi gagal disimpan, silakan coba lagi.');
     }
 
-        /**
+    /**
      * Generate invoice number secara atomic pakai tabel counter terpisah per tenant.
      * Format: INV-{tenant_id}-{Ymd}-{4 digit urut}. tenant_id dimasukkan ke
      * string-nya sendiri supaya nggak pernah collide dengan nomor lama
      * (format lama tanpa tenant_id) maupun dengan tenant lain, walau
      * angka urutnya kebetulan sama.
      */
-    private function generateInvoiceNumber(): string
+    private function generateInvoiceNumber(int $tenantId, string $today): string
     {
-        $tenantId = app(TenantContext::class)->id();
-
-        if ($tenantId === null) {
-            throw new \RuntimeException('Tidak ada tenant aktif, tidak bisa membuat transaksi.');
-        }
-
-        $today = today()->toDateString();
-
         DB::statement(
             'INSERT INTO invoice_counters (tenant_id, date, last_number, created_at, updated_at)
              VALUES (?, ?, LAST_INSERT_ID(1), NOW(), NOW())
@@ -328,6 +339,35 @@ class TransactionController extends Controller
         $number = (int) DB::getPdo()->lastInsertId();
 
         return 'INV-' . $tenantId . '-' . now()->format('Ymd') . '-' . str_pad($number, 4, '0', STR_PAD_LEFT);
+    }
+
+    /**
+     * Selaraskan invoice_counters dengan data transaksi yang SUDAH BENERAN
+     * ada di tabel transactions untuk tenant & tanggal ini. Dipanggil otomatis
+     * waktu insert transaksi kena duplicate invoice_number — biasanya artinya
+     * counter ketinggalan dibanding data (mis. hasil seed/import manual yang
+     * gak lewat generateInvoiceNumber() di atas).
+     *
+     * GREATEST() dipakai supaya ini aman dipanggil kapan pun: kalau counter
+     * ternyata udah lebih tinggi dari data (kasus normal), nilainya gak
+     * diturunkan/dirusak - cuma dinaikkan kalau memang ketinggalan.
+     */
+    private function resyncInvoiceCounter(int $tenantId, string $today): void
+    {
+        $prefix = 'INV-' . $tenantId . '-' . now()->format('Ymd') . '-';
+
+        $maxUsed = (int) (DB::table('transactions')
+            ->where('tenant_id', $tenantId)
+            ->where('invoice_number', 'like', $prefix . '%')
+            ->selectRaw('MAX(CAST(SUBSTRING(invoice_number, ?) AS UNSIGNED)) as max_used', [strlen($prefix) + 1])
+            ->value('max_used') ?? 0);
+
+        DB::statement(
+            'INSERT INTO invoice_counters (tenant_id, date, last_number, created_at, updated_at)
+             VALUES (?, ?, ?, NOW(), NOW())
+             ON DUPLICATE KEY UPDATE last_number = GREATEST(last_number, ?)',
+            [$tenantId, $today, $maxUsed, $maxUsed]
+        );
     }
 
     public function show(Transaction $transaction)
