@@ -15,33 +15,39 @@ use Illuminate\Validation\Rule;
 class ProductController extends Controller
 {
     public function index(Request $request)
-    {
-        $categories = Category::all();
-        $ingredients = Ingredient::orderBy('name')->get();
+{
+    $categories = Category::all(); // buat filter & dropdown
+    $ingredients = Ingredient::orderBy('name')->get();
 
-        // 'ingredients' di-eager-load karena kartu produk & modal edit di index.blade.php
-        // butuh nampilin resep bahan baku tiap produk.
-        $products = Product::with(['category', 'ingredients'])
-            ->when($request->search, fn ($q) => $q->where('name', 'like', "%{$request->search}%"))
-            ->when($request->category_id, fn ($q) => $q->where('category_id', $request->category_id))
-            ->when($request->low_stock, fn ($q) => $q->where('tracks_stock', true)->whereColumn('stock', '<=', 'min_stock'))
-            ->latest()
-            ->paginate(12)
-            ->withQueryString();
+    // Data khusus tab Kategori (page name beda biar gak bentrok sama paginate produk)
+    $categoryList = Category::withCount('products')
+        ->with(['products' => fn ($q) => $q->select('id', 'name', 'category_id')->latest()])
+        ->latest()
+        ->paginate(10, ['*'], 'cat_page')
+        ->withQueryString();
 
-        $totalProducts = Product::count();
+    $products = Product::with(['category', 'ingredients'])
+        ->when($request->search, fn ($q) => $q->where('name', 'like', "%{$request->search}%"))
+        ->when($request->category_id, fn ($q) => $q->where('category_id', $request->category_id))
+        ->when($request->low_stock, fn ($q) => $q->where('tracks_stock', true)->whereColumn('stock', '<=', 'min_stock'))
+        ->latest()
+        ->paginate(12)
+        ->withQueryString();
 
-        // Cuma produk yang tracks_stock beneran dihitung buat kartu ringkasan low stock
-        // & total nilai stok, biar Es Teh (stock selalu 0, tracks_stock false) gak ikut nyampur.
-        $lowStockCount = Product::where('tracks_stock', true)
-            ->whereColumn('stock', '<=', 'min_stock')
-            ->count();
+    $totalProducts = Product::count();
 
-        $totalStockValue = Product::where('tracks_stock', true)
-            ->sum(DB::raw('price_modal * stock'));
+    $lowStockCount = Product::where('tracks_stock', true)
+        ->whereColumn('stock', '<=', 'min_stock')
+        ->count();
 
-        return view('products.index', compact('products', 'categories', 'totalProducts', 'lowStockCount', 'totalStockValue', 'ingredients'));
-    }
+    $totalStockValue = Product::where('tracks_stock', true)
+        ->sum(DB::raw('price_modal * stock'));
+
+    return view('products.index', compact(
+        'products', 'categories', 'categoryList', 'totalProducts',
+        'lowStockCount', 'totalStockValue', 'ingredients'
+    ));
+}
 
     public function create()
     {

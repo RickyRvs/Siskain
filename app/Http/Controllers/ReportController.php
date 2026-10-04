@@ -297,19 +297,54 @@ class ReportController extends Controller
             });
     }
 
-    private function buildStockRecap()
+       private function buildStockRecap()
     {
-        return Product::select('id', 'name', 'stock', 'min_stock', 'price_modal', 'price_jual')
+        return Product::with('variants:id,product_id,stock,price_modal,price_jual')
+            ->select('id', 'name', 'stock', 'min_stock', 'tracks_stock', 'has_variant', 'price_modal', 'price_jual')
             ->orderBy('name')
             ->get()
-            ->map(fn ($p) => [
-                'name' => $p->name,
-                'stock' => $p->stock,
-                'min_stock' => $p->min_stock,
-                'status' => $p->stock <= $p->min_stock ? 'Menipis' : 'Aman',
-                'nilai_modal' => $p->stock * $p->price_modal,
-                'nilai_jual' => $p->stock * ($p->price_jual ?? 0),
-            ]);
+            ->map(function ($p) {
+                // Produk bervarian: stok & nilai dijumlahkan dari varian-variannya.
+                if ($p->has_variant && $p->variants->isNotEmpty()) {
+                    $stock = (int) $p->variants->sum('stock');
+
+                    return [
+                        'name' => $p->name . ' (varian)',
+                        'stock' => $stock,
+                        'min_stock' => $p->min_stock,
+                        'status' => $stock <= $p->min_stock ? 'Menipis' : 'Aman',
+                        'price_modal' => null,
+                        'price_jual' => null,
+                        'nilai_modal' => (float) $p->variants->sum(fn ($v) => $v->stock * $v->price_modal),
+                        'nilai_jual' => (float) $p->variants->sum(fn ($v) => $v->stock * ($v->price_jual ?? 0)),
+                    ];
+                }
+
+                // Produk yang gak melacak stok (Es Teh dkk): jangan dianggap menipis.
+                if (!$p->tracks_stock) {
+                    return [
+                        'name' => $p->name,
+                        'stock' => 0,
+                        'min_stock' => 0,
+                        'status' => 'Tidak dilacak',
+                        'price_modal' => (float) $p->price_modal,
+                        'price_jual' => (float) ($p->price_jual ?? 0),
+                        'nilai_modal' => 0,
+                        'nilai_jual' => 0,
+                    ];
+                }
+
+                return [
+                    'name' => $p->name,
+                    'stock' => $p->stock,
+                    'min_stock' => $p->min_stock,
+                    'status' => $p->stock <= $p->min_stock ? 'Menipis' : 'Aman',
+                    'price_modal' => (float) $p->price_modal,
+                    'price_jual' => (float) ($p->price_jual ?? 0),
+                    'nilai_modal' => $p->stock * $p->price_modal,
+                    'nilai_jual' => $p->stock * ($p->price_jual ?? 0),
+                ];
+            });
     }
 
     private function buildPiutangRecap(Carbon $start, Carbon $end)

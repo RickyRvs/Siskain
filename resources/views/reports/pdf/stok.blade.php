@@ -12,6 +12,7 @@
         .right { text-align: right; }
         .status-aman { color: #2F6F4E; }
         .status-menipis { color: #B5482E; font-weight: bold; }
+        .status-netral { color: #8A8272; }
     </style>
 </head>
 <body>
@@ -33,19 +34,27 @@
         </thead>
         <tbody>
             @forelse ($stockRecap as $p)
+                @php
+                    $tidakDilacak = $p['status'] === 'Tidak dilacak';
+                    $statusClass = match ($p['status']) {
+                        'Menipis' => 'status-menipis',
+                        'Aman' => 'status-aman',
+                        default => 'status-netral',
+                    };
+                @endphp
                 <tr>
                     <td>{{ $p['name'] }}</td>
-                    <td class="right">{{ $p['stock'] }}</td>
-                    <td class="right">{{ $p['min_stock'] }}</td>
-                    <td class="{{ $p['status'] === 'Menipis' ? 'status-menipis' : 'status-aman' }}">{{ $p['status'] }}</td>
-                    <td class="right">Rp {{ number_format($p['nilai_modal'] > 0 ? $p['nilai_modal'] / max($p['stock'], 1) : 0, 0, ',', '.') }}</td>
-                    <td class="right">Rp {{ number_format($p['nilai_jual'] > 0 ? $p['nilai_jual'] / max($p['stock'], 1) : 0, 0, ',', '.') }}</td>
+                    <td class="right">{{ $tidakDilacak ? '-' : $p['stock'] }}</td>
+                    <td class="right">{{ $tidakDilacak ? '-' : $p['min_stock'] }}</td>
+                    <td class="{{ $statusClass }}">{{ $p['status'] }}</td>
+                    <td class="right">{{ $p['price_modal'] === null ? '-' : 'Rp ' . number_format($p['price_modal'], 0, ',', '.') }}</td>
+                    <td class="right">{{ $p['price_jual'] === null ? '-' : 'Rp ' . number_format($p['price_jual'], 0, ',', '.') }}</td>
                     <td class="right">Rp {{ number_format($p['nilai_modal'], 0, ',', '.') }}</td>
                     <td class="right">Rp {{ number_format($p['nilai_jual'], 0, ',', '.') }}</td>
                 </tr>
             @empty
                 <tr>
-                    <td colspan="8" class="right" style="text-align:center;">Belum ada produk</td>
+                    <td colspan="8" style="text-align:center;">Belum ada produk</td>
                 </tr>
             @endforelse
         </tbody>

@@ -9,6 +9,7 @@ use App\Http\Controllers\ProductVariantController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\StockMovementController;
+use App\Http\Controllers\StoreSessionController;
 use App\Http\Controllers\TransactionController;
 use App\Http\Controllers\IngredientController;
 use App\Http\Controllers\SuperAdmin\TenantController;
@@ -83,9 +84,14 @@ Route::middleware(['auth', 'verified', 'role:owner'])
 */
 Route::middleware(['auth', 'verified', 'role:owner,kasir'])->group(function () {
 
-    // Kategori
+    // Kategori (dikelola dari tab di halaman Produk & Stok)
     Route::middleware('menu:categories')->group(function () {
-        Route::resource('categories', CategoryController::class);
+        // URL lama /categories (bookmark, tab lama) -> langsung ke tab Kategori
+        Route::get('categories', fn () => redirect()->route('products.index', ['tab' => 'kategori']))
+            ->name('categories.index');
+
+        Route::resource('categories', CategoryController::class)
+            ->only(['store', 'update', 'destroy']);
     });
 
     // Produk & stok
@@ -128,7 +134,7 @@ Route::middleware(['auth', 'verified', 'role:owner,kasir'])->group(function () {
         Route::post('transactions/{transaction}/pay-piutang', [TransactionController::class, 'payPiutang'])->name('transactions.pay-piutang');
 
         // Tambah item ke invoice yang sudah ada, khusus transaksi yang belum
-        // dibatalkan & masih di hari yang sama (lihat guard-nya di controller).
+        // dibatalkan & masih di sesi toko yang sedang berjalan (lihat guard-nya di controller).
         Route::post('transactions/{transaction}/add-items', [TransactionController::class, 'addItems'])->name('transactions.addItems');
 
         Route::patch('transactions/{transaction}/cancel', [TransactionController::class, 'cancel'])->name('transactions.cancel');
@@ -138,6 +144,13 @@ Route::middleware(['auth', 'verified', 'role:owner,kasir'])->group(function () {
         // "piutang" padahal paid_amount udah >= total (bug checkbox is_piutang
         // yang udah dipatch di store()/addItems(), lihat komentar di controller).
         Route::post('transactions/fix-piutang-status', [TransactionController::class, 'fixPiutangStatus'])->name('transactions.fix-piutang-status');
+
+        // Buka/tutup toko (sesi kasir) + catat pengeluaran dari halaman kasir.
+        // Ikut menu:transactions, jadi siapa pun yang boleh pakai kasir (owner
+        // maupun kasir) otomatis boleh buka dan tutup toko.
+        Route::post('store-sessions/open', [StoreSessionController::class, 'open'])->name('store-sessions.open');
+        Route::post('store-sessions/close', [StoreSessionController::class, 'close'])->name('store-sessions.close');
+        Route::post('store-sessions/expense', [StoreSessionController::class, 'storeExpense'])->name('store-sessions.expense');
     });
 
     // Laporan & rekap
@@ -147,7 +160,7 @@ Route::middleware(['auth', 'verified', 'role:owner,kasir'])->group(function () {
         Route::get('reports/export/excel/{type}', [ReportController::class, 'exportExcel'])->name('reports.export.excel');
     });
 
-       // Pengeluaran operasional (sewa, es batu, dll) + master jenis pengeluarannya
+    // Pengeluaran operasional (sewa, es batu, dll) + master jenis pengeluarannya
     Route::middleware('menu:expenses')->group(function () {
         Route::resource('expenses', ExpenseController::class)->only(['index', 'store', 'update', 'destroy']);
         Route::resource('expense-types', ExpenseTypeController::class)->only(['store', 'update', 'destroy']);

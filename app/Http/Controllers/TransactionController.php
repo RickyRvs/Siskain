@@ -3,15 +3,18 @@
 namespace App\Http\Controllers;
 
 use App\Models\Customer;
+use App\Models\ExpenseType;
 use App\Models\Ingredient;
 use App\Models\IngredientStockMovement;
 use App\Models\Payment;
 use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Models\StockMovement;
+use App\Models\StoreSession;
 use App\Models\Transaction;
 use App\Services\TenantContext;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Carbon\Carbon;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -38,7 +41,21 @@ class TransactionController extends Controller
             ->paginate(15)
             ->withQueryString();
 
-        $todayQuery = Transaction::whereDate('created_at', today())->where('status', '!=', 'batal');
+        // Kartu "hari ini" sekarang dihitung per SESI TOKO, bukan per tanggal kalender,
+        // jadi toko yang buka sampai lewat tengah malam angkanya gak kepotong.
+        // Kalau toko lagi tutup, yang ditampilkan sesi terakhir. Kalau belum pernah
+        // ada sesi sama sekali, jatuh balik ke tanggal hari ini.
+        $window = StoreSession::current() ?? StoreSession::latestForTenant();
+
+        if ($window) {
+            $from = $window->opened_at;
+            $to = $window->closed_at ?? now();
+        } else {
+            $from = today()->startOfDay();
+            $to = today()->endOfDay();
+        }
+
+        $todayQuery = Transaction::whereBetween('created_at', [$from, $to])->where('status', '!=', 'batal');
 
         $piutangTransactions = Transaction::where('status', 'piutang')
             ->withSum('payments', 'amount')
@@ -56,31 +73,31 @@ class TransactionController extends Controller
 
     public function create()
     {
-        // ->active() : produk yang dinonaktifkan owner gak boleh muncul lagi
-        // di katalog kasir, walaupun stoknya masih ada.
-        $products = Product::with(['variants', 'ingredients'])
-            ->active()
-            ->where(function ($q) {
-                $q->where('stock', '>', 0)
-                    ->orWhere('has_variant', true)
-                    ->orWhere('tracks_stock', false);
-            })
-            ->orderBy('name')
-            ->get();
+        $storeSession = StoreSession::current();
 
-        $customers = Customer::orderBy('name')->get();
+        // Toko belum dibuka: halaman kasir cuma nampilin form "Buka Toko",
+        // jadi gak perlu narik katalog produk, customer, dan jenis pengeluaran.
+        $sessionSummary = $storeSession ? $storeSession->summary() : null;
+        $products = $storeSession ? $this->catalogProducts() : collect();
+        $customers = $storeSession ? Customer::orderBy('name')->get() : collect();
+        $expenseTypes = $storeSession ? ExpenseType::where('is_active', true)->orderBy('name')->get() : collect();
 
-        return view('transactions.create', compact('products', 'customers'));
+        return view('transactions.create', compact(
+            'products', 'customers', 'storeSession', 'sessionSummary', 'expenseTypes'
+        ));
     }
 
     /**
      * Query produk aktif buat katalog kasir. Dipakai bareng-bareng
      * sama create() dan show() (pas mode "tambah item" ke invoice lama),
      * biar daftar produknya konsisten di kedua tempat.
+     *
+     * ->active() : produk yang dinonaktifkan owner gak boleh muncul lagi
+     * di katalog kasir, walaupun stoknya masih ada.
      */
     private function catalogProducts()
     {
-        return Product::with(['variants', 'ingredients'])
+        return Product::with(['variants', 'ingredients', 'category'])
             ->active()
             ->where(function ($q) {
                 $q->where('stock', '>', 0)
@@ -129,7 +146,11 @@ class TransactionController extends Controller
             return back()->withInput()->with('error', 'Tidak ada tenant aktif, tidak bisa membuat transaksi.');
         }
 
-        $today = today()->toDateString();
+        // Transaksi cuma boleh dibuat selama toko dalam keadaan buka, biar semua
+        // penjualan dan uang masuknya kecatat di sesi yang benar.
+        if (!StoreSession::current()) {
+            return back()->withInput()->with('error', 'Toko belum dibuka. Buka toko dulu sebelum membuat transaksi.');
+        }
 
         $attempts = 0;
         $maxAttempts = 5;
@@ -137,14 +158,16 @@ class TransactionController extends Controller
         do {
             $attempts++;
 
-            // FIX: generate invoice number DI LUAR DB::transaction() di bawah. Sebelumnya
-            // generateInvoiceNumber() dipanggil di dalam closure transaksi utama, jadi kalau
-            // transaksi utamanya gagal & rollback (mis. gara-gara duplicate invoice_number),
-            // increment counter di tabel invoice_counters IKUT ke-rollback juga - retry
-            // berikutnya generate nomor yang PERSIS SAMA lagi, gagal lagi, gitu terus sampai
-            // attempts habis. Dengan generate di sini (statement berdiri sendiri, gak ada
-            // transaksi aktif yang membungkusnya), incrementnya langsung permanen di database
-            // walau transaksi utama nanti gagal - jadi retry berikutnya pasti dapat nomor baru.
+            // Tanggal diambil SEKALI per percobaan, lalu dipakai untuk key counter DAN
+            // untuk string nomor invoice. Sebelumnya string invoice pakai now() terpisah,
+            // jadi kalau request kebetulan melintasi jam 00:00 nomor yang dihasilkan bisa
+            // pakai tanggal baru tapi urutannya dari counter tanggal lama.
+            $today = today()->toDateString();
+
+            // Generate invoice number DI LUAR DB::transaction() di bawah. Kalau digenerate
+            // di dalam, rollback karena duplicate invoice_number ikut me-rollback increment
+            // counter, jadi retry dapat nomor yang sama terus. Di luar transaksi, incrementnya
+            // permanen walau transaksi utama gagal.
             $invoiceNumber = $this->generateInvoiceNumber($tenantId, $today);
 
             try {
@@ -326,6 +349,10 @@ class TransactionController extends Controller
      * string-nya sendiri supaya nggak pernah collide dengan nomor lama
      * (format lama tanpa tenant_id) maupun dengan tenant lain, walau
      * angka urutnya kebetulan sama.
+     *
+     * Tanggal di nomor invoice tetap tanggal kalender (bukan tanggal sesi),
+     * jadi invoice jam 00:30 pakai tanggal hari berikutnya. Itu wajar dan
+     * gak ngaruh ke pengelompokan sesi, karena sesi dihitung dari jam transaksi.
      */
     private function generateInvoiceNumber(int $tenantId, string $today): string
     {
@@ -338,7 +365,7 @@ class TransactionController extends Controller
 
         $number = (int) DB::getPdo()->lastInsertId();
 
-        return 'INV-' . $tenantId . '-' . now()->format('Ymd') . '-' . str_pad($number, 4, '0', STR_PAD_LEFT);
+        return 'INV-' . $tenantId . '-' . Carbon::parse($today)->format('Ymd') . '-' . str_pad($number, 4, '0', STR_PAD_LEFT);
     }
 
     /**
@@ -354,7 +381,7 @@ class TransactionController extends Controller
      */
     private function resyncInvoiceCounter(int $tenantId, string $today): void
     {
-        $prefix = 'INV-' . $tenantId . '-' . now()->format('Ymd') . '-';
+        $prefix = 'INV-' . $tenantId . '-' . Carbon::parse($today)->format('Ymd') . '-';
 
         $maxUsed = (int) (DB::table('transactions')
             ->where('tenant_id', $tenantId)
@@ -374,11 +401,15 @@ class TransactionController extends Controller
     {
         $transaction->load(['items.product', 'items.variant', 'user', 'customer', 'payments' => fn ($q) => $q->oldest()]);
 
-        // "Tambah Item" cuma dibolehin di hari yang sama transaksi dibuat &
-        // transaksinya belum dibatalkan. Di luar itu, ngedit invoice yang
-        // sudah lewat hari beresiko bikin rekap kas hari itu gak nyambung
-        // lagi sama fisik uangnya.
-        $canAddItems = $transaction->status !== 'batal' && $transaction->created_at->isToday();
+        // "Tambah Item" cuma dibolehin kalau transaksinya belum dibatalkan, toko
+        // masih buka, dan transaksinya dibuat di sesi toko yang sedang berjalan.
+        // Di luar itu, ngedit invoice dari sesi yang sudah ditutup beresiko bikin
+        // rekap kas sesi tersebut gak nyambung lagi sama fisik uangnya.
+        $storeSession = StoreSession::current();
+
+        $canAddItems = $transaction->status !== 'batal'
+            && $storeSession !== null
+            && $transaction->created_at->gte($storeSession->opened_at);
 
         $products = $canAddItems ? $this->catalogProducts() : collect();
 
@@ -387,7 +418,7 @@ class TransactionController extends Controller
 
     /**
      * Tambah item ke transaksi yang sudah ada (dipakai buat kasus customer
-     * pesan lagi setelah invoice pertama sudah lunas, di hari yang sama).
+     * pesan lagi setelah invoice pertama sudah lunas, di sesi toko yang sama).
      * Bukan bikin invoice baru — item baru nempel ke invoice yang sama,
      * stok/bahan baku dipotong lagi, dan subtotal/total dihitung ulang.
      */
@@ -424,8 +455,14 @@ class TransactionController extends Controller
                     throw new \RuntimeException('Transaksi ini sudah dibatalkan, tidak bisa ditambah item.');
                 }
 
-                if (!$transaction->created_at->isToday()) {
-                    throw new \RuntimeException('Item cuma bisa ditambahkan di hari yang sama transaksi dibuat.');
+                $storeSession = StoreSession::current();
+
+                if (!$storeSession) {
+                    throw new \RuntimeException('Toko belum dibuka, tidak bisa menambah item.');
+                }
+
+                if ($transaction->created_at->lt($storeSession->opened_at)) {
+                    throw new \RuntimeException('Item cuma bisa ditambahkan ke transaksi dari sesi toko yang sedang berjalan.');
                 }
 
                 $addedSubtotal = 0;
@@ -573,6 +610,12 @@ class TransactionController extends Controller
     {
         if ($transaction->status !== 'piutang') {
             return back()->with('error', 'Transaksi ini bukan piutang atau sudah lunas.');
+        }
+
+        // Pembayaran piutang itu uang masuk. Biar kecatat di kas laci sesi yang
+        // benar, toko harus lagi buka pas pembayarannya dicatat.
+        if (!StoreSession::current()) {
+            return back()->with('error', 'Toko belum dibuka. Buka toko dulu supaya pembayaran masuk ke kas laci.');
         }
 
         $validated = $request->validate([

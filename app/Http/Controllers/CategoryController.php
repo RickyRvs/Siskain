@@ -3,27 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Models\Category;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 
 class CategoryController extends Controller
 {
-    public function index()
-    {
-        $categories = Category::withCount('products')
-            ->with(['products' => function ($query) {
-                $query->select('id', 'name', 'category_id')->latest();
-            }])
-            ->latest()
-            ->paginate(10);
-
-        return view('categories.index', compact('categories'));
-    }
-
-    public function create()
-    {
-        return view('categories.create');
-    }
-
     public function store(Request $request)
     {
         $validated = $request->validate([
@@ -32,12 +16,9 @@ class CategoryController extends Controller
 
         Category::create($validated);
 
-        return redirect()->route('categories.index')->with('success', 'Kategori berhasil ditambahkan.');
-    }
-
-    public function edit(Category $category)
-    {
-        return view('categories.edit', compact('category'));
+        return redirect()
+            ->route('products.index', ['tab' => 'kategori'])
+            ->with('success', 'Kategori berhasil ditambahkan.');
     }
 
     public function update(Request $request, Category $category)
@@ -48,13 +29,28 @@ class CategoryController extends Controller
 
         $category->update($validated);
 
-        return redirect()->route('categories.index')->with('success', 'Kategori berhasil diperbarui.');
+        return redirect()
+            ->route('products.index', ['tab' => 'kategori'])
+            ->with('success', 'Kategori berhasil diperbarui.');
     }
 
     public function destroy(Category $category)
     {
-        $category->delete();
+        try {
+            $category->delete();
+        } catch (QueryException $e) {
+            // 23000 = foreign key: kategori masih dipakai produk
+            if ($e->getCode() === '23000') {
+                return redirect()
+                    ->route('products.index', ['tab' => 'kategori'])
+                    ->with('error', 'Kategori "'.$category->name.'" tidak bisa dihapus karena masih dipakai produk.');
+            }
 
-        return redirect()->route('categories.index')->with('success', 'Kategori berhasil dihapus.');
+            throw $e;
+        }
+
+        return redirect()
+            ->route('products.index', ['tab' => 'kategori'])
+            ->with('success', 'Kategori berhasil dihapus.');
     }
 }

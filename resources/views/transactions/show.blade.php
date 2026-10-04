@@ -5,9 +5,9 @@
                 <div class="w-1.5 h-7 rounded-full bg-[#D4A73C]"></div>
                 <h2 class="font-semibold text-xl text-[#1F2A24] leading-tight">Detail Transaksi</h2>
             </div>
-            <a href="{{ route('transactions.index') }}" class="inline-flex items-center gap-1.5 text-sm text-[#8A8272] hover:text-[#1F2A24]">
+            <a href="{{ route('transactions.create') }}" class="inline-flex items-center gap-1.5 text-sm text-[#8A8272] hover:text-[#1F2A24]">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
-                Kembali
+                Kembali ke Kasir
             </a>
         </div>
     </x-slot>
